@@ -771,7 +771,7 @@ def upload_game(title: str, description: str, prompt: str, cost_in_eth: float, r
                 "prompt": prompt,
                 "cost_in_eth": cost_in_eth,
                 "reward_in_tokens": reward_in_tokens,
-                "card_type": card_type,
+                "game_type": card_type,
                 "revenue": 0,
                 "developer_id": developer_id
             }
@@ -781,8 +781,72 @@ def upload_game(title: str, description: str, prompt: str, cost_in_eth: float, r
                 
         return success
     except Exception as e:
-        st.error(f"Error creating game: {str(e)}")
+        print(f"Error creating game: {str(e)}")
         return False
+
+def fetch_games() -> List[Dict]:
+    """Fetch all Game data from nodes."""
+    try:
+        games = {}
+        for node_name in ['node_a', 'node_b', 'node_c']:
+            node_games = nildb_api.data_read(node_name, schema_manager.schema_ids["Game"])
+            print('Fetched Games:', node_games)
+
+            for game in node_games:
+                game_id = game['_id']
+                if game_id not in games:
+                    games[game_id] = {
+                        "title": game["title"],
+                        "description": game["description"],
+                        "prompt": game["prompt"],
+                        "cost_in_eth": game["cost_in_eth"],
+                        "reward_in_tokens": game["reward_in_tokens"],
+                        "game_type": game["game_type"],
+                        "revenue": game["revenue"],
+                        "developer_id": game["developer_id"]
+                    }
+
+        return list(games.values())
+
+    except Exception as e:
+        print(f"Error fetching games: {str(e)}")
+        return []
+
+def get_game(title: str) -> Dict:
+    """Fetch a specific game based on its title."""
+    try:
+        filter_dict = {"title": title}
+
+        games = {}
+        for node_name in ['node_a', 'node_b', 'node_c']:
+            node_games = nildb_api.data_read(node_name, schema_manager.schema_ids["Game"], filter_dict)
+            print('Filtered Games:', node_games)
+
+            for game in node_games:
+                game_id = game['_id']
+                if game_id not in games:
+                    games[game_id] = {
+                        "title": game["title"],
+                        "description": game["description"],
+                        "prompt": game["prompt"],
+                        "cost_in_eth": game["cost_in_eth"],
+                        "reward_in_tokens": game["reward_in_tokens"],
+                        "game_type": game["game_type"],
+                        "revenue": game["revenue"],
+                        "developer_id": game["developer_id"]
+                    }
+
+        if not games:
+            print("Game not found.")
+            return {}
+
+        return list(games.values())[0]  # Return the first match
+    
+    except Exception as e:
+        print(f"Error retrieving game: {str(e)}")
+        return {}
+
+
 
 
 
