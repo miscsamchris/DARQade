@@ -6,17 +6,16 @@ from web3 import Web3
 from solcx import compile_source, install_solc
 import math
 import datetime
-import dotenv,os
+import dotenv, os
 import utils
+
 dotenv.load_dotenv()
 install_solc("0.8.0")
 # Blockchain Connection
-INFURA_KEY=os.environ.get("INFURA_KEY","YOUR_INFURA_API_KEY")
+INFURA_KEY = os.environ.get("INFURA_KEY", "YOUR_INFURA_API_KEY")
 RPC_URL = f"https://base-sepolia.infura.io/v3/{INFURA_KEY}"
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
-private_key = os.getenv(
-    "PRIVATE_KEY", "PrivateKey"
-)  # Store securely!
+private_key = os.getenv("PRIVATE_KEY", "PrivateKey")  # Store securely!
 admin = web3.eth.account.from_key(private_key)
 web3.eth.default_account = admin.address
 
@@ -93,7 +92,7 @@ def gamedev_signup():
     description = data.get("description", "")
     # Check if developer already exists
     utils.token_gen.update_config()
-    if utils.login_gamedev(email, password)!={}:
+    if utils.login_gamedev(email, password) != {}:
         return jsonify({"error": "Game developer already exists"}), 400
 
     # Generate Ethereum Wallet for the game developer
@@ -113,14 +112,26 @@ def gamedev_signup():
         "nonce": web3.eth.get_transaction_count(admin.address),
         "chainId": web3.eth.chain_id,
     }
-
+    account.key
     # Sign and send transaction
     signed_txn = web3.eth.account.sign_transaction(transaction, admin.key.hex())
     tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
     # Save game developer details in MongoDB
-    gamedev_id=str(uuid.uuid4())
+    gamedev_id = str(uuid.uuid4())
     utils.token_gen.update_config()
-    utils.upload_gamedev(gamedev_id,email, company_name, password, website, description, wallet_address, private_key,False,0,True)
+    utils.upload_gamedev(
+        gamedev_id,
+        email,
+        company_name,
+        password,
+        website,
+        description,
+        wallet_address,
+        private_key,
+        False,
+        0,
+        True,
+    )
     return (
         jsonify(
             {
@@ -139,28 +150,144 @@ def gamedev_login():
     email = data["loginEmail"]
     password = data["loginPassword"]
     utils.token_gen.update_config()
-    gamedev = utils.login_gamedev(email, password)  
+    gamedev = utils.login_gamedev(email, password)
 
-    if gamedev=={}:
+    if gamedev == {}:
+        return jsonify({"error": "Invalid email or password"}), 401
+    utils.token_gen.update_config()
+    token = utils.get_token_by_gamedev_wallet(gamedev["Wallet Address"])
+    if token == {}:
+        return (
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "uuid": gamedev["_id"],
+                    "company_name": gamedev["Company Name"],
+                    "wallet_address": gamedev["Wallet Address"],
+                    "hastoken": "false",
+                }
+            ),
+            200,
+        )
+    else:
+        return (
+            jsonify(
+                {
+                    "message": "Login successful",
+                    "uuid": gamedev["_id"],
+                    "company_name": gamedev["Company Name"],
+                    "wallet_address": gamedev["Wallet Address"],
+                    "hastoken": "true",
+                }
+            ),
+            200,
+        )
+
+
+@app.route("/create_token", methods=["POST"])
+def create_token():
+    data = request.json
+    name = data["name"]
+    symbol = data["symbol"]
+    decimals = int(data["decimals"])
+    total_supply = int(data["total_supply"])
+    myuuid = data["uuid"]
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_id(myuuid)
+    if gamedev == {}:
         return jsonify({"error": "Invalid email or password"}), 401
 
-    return (
-        jsonify(
-            {
-                "message": "Login successful",
-                "uuid": gamedev["id"],
-                "company_name": gamedev["Company Name"],
-                "wallet_address": gamedev["Wallet Address"],
-            }
-        ),
-        200,
+    account = web3.eth.account.from_key(gamedev["Private Key"])
+    ERC20 = web3.eth.contract(
+        abi=contract_interface["abi"], bytecode=contract_interface["bin"]
     )
 
+    # Build transaction
+    transaction = ERC20.constructor(
+        name, symbol, decimals, total_supply
+    ).build_transaction(
+        {
+            "from": account.address,
+            "gas": 1000000,
+            "gasPrice": web3.to_wei("1", "gwei"),
+            "nonce": web3.eth.get_transaction_count(account.address),
+        }
+    )
+
+    # Sign and send
+    signed_txn = web3.eth.account.sign_transaction(transaction, account.key.hex())
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+    tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
+
+    contract_address = tx_receipt.contractAddress
+
+    utils.token_gen.update_config()
+    utils.upload_token(
+        name,
+        symbol,
+        decimals,
+        str(total_supply),
+        str(contract_address),
+        str(account.address),
+    )
+
+    # utils.token_gen.update_config()
+    # utils.update_gamedev(
+    #     myuuid,
+    #     private_key=gamedev["Private Key"],
+    #     company_name=gamedev["Company Name"],
+    #     email=gamedev["Email"],
+    #     website=gamedev["Website"],
+    #     description=gamedev["Description"],
+    #     wallet_address=gamedev["Wallet Address"],
+    #     token=contract_address,
+    #     password=gamedev["Password"],
+    #     total_revenue=gamedev["Total Revenue"],
+    #     active_status=gamedev["Active Status"],
+    #     verified=False,
+    # )
+    return (
+        jsonify({"message": "Token Created", "contract_address": contract_address}),
+        201,
+    )
+
+
+@app.route("/gamedev/<uuid>/games", methods=["GET"])
+def get_games(uuid):
+    utils.token_gen.update_config()
+    games = utils.get_games_by_gamedev(uuid)
+    if games == {}:
+        return jsonify({"error": "Game developer not found"}), 404
+    return jsonify(games["games"]), 200
+
+
+@app.route("/gamedev/create_game", methods=["POST"])
+def create_game():
+    data = request.form  # Use request.form for form data
+    print(data)
+    myuuid = data.get("uuid")
+    utils.token_gen.update_config()
+    utils.upload_game(
+        title=data.get("game_title"),
+        description=data.get("game_description"),
+        prompt=data.get("prompt"),
+        cost_in_eth=float(data.get("cost_in_eth")),
+        reward_in_tokens=float(data.get("reward_in_tokens")),
+        card_type=int(data.get("card_type", "prompt")),
+        developer_id=myuuid,
+    )
+
+    return redirect(url_for("dash"))  # Redirect to the dashboard page
 
 
 @app.route("/")
 def home():
-    return "Hello World!"
+    return render_template("index.html")
+
+
+@app.route("/dashboard")
+def dash():
+    return render_template("dashboard.html")
 
 
 if __name__ == "__main__":

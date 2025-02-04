@@ -7,82 +7,123 @@ import nilql
 from typing import List
 import json
 import uuid
-import dotenv,os,datetime
+import dotenv, os, datetime
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+
+# Import CDP Agentkit Langchain Extension.
+from cdp_langchain.agent_toolkits import CdpToolkit
+from cdp_langchain.utils import CdpAgentkitWrapper
+
 dotenv.load_dotenv()
 import traceback
+
 NODE_CONFIG = {
-    'node_a': {
-        'url': os.environ.get("NODE_A_URL","")  ,
-        'did': os.environ.get("NODE_A_DID","")  
+    "node_a": {
+        "url": os.environ.get("NODE_A_URL", ""),
+        "did": os.environ.get("NODE_A_DID", ""),
     },
-    'node_b': {
-        'url': os.environ.get("NODE_B_URL","")  ,
-        'did': os.environ.get("NODE_B_DID","")  
+    "node_b": {
+        "url": os.environ.get("NODE_B_URL", ""),
+        "did": os.environ.get("NODE_B_DID", ""),
     },
-    'node_c': {
-        'url': os.environ.get("NODE_C_URL","")  ,
-        'did': os.environ.get("NODE_C_DID","")  
+    "node_c": {
+        "url": os.environ.get("NODE_C_URL", ""),
+        "did": os.environ.get("NODE_C_DID", ""),
     },
 }
 
 # Org DID
-ORG_DID = os.environ.get("ORG_DID","")  
+ORG_DID = os.environ.get("ORG_DID", "")
 
 # Org secret key
-ORG_SECRET_KEY = os.environ.get("ORG_SECRET_KEY","")  
+ORG_SECRET_KEY = os.environ.get("ORG_SECRET_KEY", "")
 
 # Number of nodes for secret sharing
 NUM_NODES = len(NODE_CONFIG)
 
+
 class NilDBAPI:
     def __init__(self, node_config: Dict):
         self.nodes = node_config
-    
+
     def data_upload(self, node_name: str, schema_id: str, payload: list) -> bool:
         """Create/upload records in the specified node and schema."""
         try:
             node = self.nodes[node_name]
             headers = {
-                'Authorization': f'Bearer {node["jwt"]}',
-                'Content-Type': 'application/json'
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
             }
-            
-            body = {
-                "schema": schema_id,
-                "data": payload
-            }
-            print(f" Headers {headers}\n",f"Body {body}")
+
+            body = {"schema": schema_id, "data": payload}
+            print(f" Headers {headers}\n", f"Body {body}")
             response = requests.post(
-                f"{node['url']}/api/v1/data/create",
-                headers=headers,
-                json=body
+                f"{node['url']}/api/v1/data/create", headers=headers, json=body
             )
             print(response.json())
-            return response.status_code == 200 and response.json().get("data", {}).get("errors", []) == []
+            return (
+                response.status_code == 200
+                and response.json().get("data", {}).get("errors", []) == []
+            )
         except Exception as e:
-            print(f"Error creating records in {node_name}: {str(traceback.format_exc())}")
+            print(
+                f"Error creating records in {node_name}: {str(traceback.format_exc())}"
+            )
             return False
 
-    def data_read(self, node_name: str, schema_id: str, filter_dict: Optional[dict] = None) -> List[Dict]:
+    def data_update(
+        self, node_name: str, schema_id: str, filter_dict: dict, update_dict: dict
+    ) -> bool:
+        """Update records in the specified node and schema."""
+        try:
+            node = self.nodes[node_name]
+            headers = {
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+
+            body = {"schema": schema_id, "filter": filter_dict, "update": update_dict}
+
+            response = requests.post(
+                f"{node['url']}/api/v1/data/update", headers=headers, json=body
+            )
+
+            if response.status_code == 200:
+                return response.json().get("data", {}).get("errors", []) == []
+            else:
+                print(
+                    f"Failed to update data in {node_name}: {response.status_code} {response.text}"
+                )
+                return False
+
+        except Exception as e:
+            print(f"Error updating data in {node_name}: {str(traceback.format_exc())}")
+            return False
+
+    def data_read(
+        self, node_name: str, schema_id: str, filter_dict: Optional[dict] = None
+    ) -> List[Dict]:
         """Read data from the specified node and schema."""
         try:
             node = self.nodes[node_name]
             headers = {
-                'Authorization': f'Bearer {node["jwt"]}',
-                'Content-Type': 'application/json'
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
             }
-            
+
             body = {
                 "schema": schema_id,
-                "filter": filter_dict if filter_dict is not None else {}
+                "filter": filter_dict if filter_dict is not None else {},
             }
-            
+
             response = requests.post(
-                f"{node['url']}/api/v1/data/read",
-                headers=headers,
-                json=body
+                f"{node['url']}/api/v1/data/read", headers=headers, json=body
             )
-            
+
             if response.status_code == 200:
                 return response.json().get("data", [])
             return []
@@ -90,31 +131,33 @@ class NilDBAPI:
             print(f"Error reading data from {node_name}: {str(traceback.format_exc())}")
             return []
 
-    def query_execute(self, node_name: str, query_id: str, variables: Optional[dict] = None) -> List[Dict]:
+    def query_execute(
+        self, node_name: str, query_id: str, variables: Optional[dict] = None
+    ) -> List[Dict]:
         """Execute a query on the specified node with advanced filtering."""
         try:
             node = self.nodes[node_name]
             headers = {
-                'Authorization': f'Bearer {node["jwt"]}',
-                'Content-Type': 'application/json'
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
             }
 
             payload = {
                 "id": query_id,
-                "variables": variables if variables is not None else {}
+                "variables": variables if variables is not None else {},
             }
 
             response = requests.post(
-                f"{node['url']}/api/v1/queries/execute",
-                headers=headers,
-                json=payload
+                f"{node['url']}/api/v1/queries/execute", headers=headers, json=payload
             )
 
             if response.status_code == 200:
                 return response.json().get("data", [])
             return []
         except Exception as e:
-            print(f"Error executing query on {node_name}: {str(traceback.format_exc())}")
+            print(
+                f"Error executing query on {node_name}: {str(traceback.format_exc())}"
+            )
             return []
 
     def create_schema(self, node_name: str, payload: dict = None) -> List[Dict]:
@@ -122,24 +165,28 @@ class NilDBAPI:
         try:
             node = self.nodes[node_name]
             headers = {
-                'Authorization': f'Bearer {node["jwt"]}',
-                'Content-Type': 'application/json'
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
             }
             response = requests.post(
                 f"{node['url']}/api/v1/schemas",
                 headers=headers,
-                json=payload if payload is not None else {}
+                json=payload if payload is not None else {},
             )
 
             if response.status_code == 200 and response.json().get("errors", []) == []:
                 print(f"Schema created successfully on {node_name}.")
                 return response.json().get("data", [])
             else:
-                print(f"Failed to create schema on {node_name}: {response.status_code} {response.text}")
+                print(
+                    f"Failed to create schema on {node_name}: {response.status_code} {response.text}"
+                )
                 return []
 
         except Exception as e:
-            print(f"Error creating schema on {node_name}: {str(traceback.format_exc())}")
+            print(
+                f"Error creating schema on {node_name}: {str(traceback.format_exc())}"
+            )
             return []
 
     def create_query(self, node_name: str, payload: dict = {}) -> List[Dict]:
@@ -147,36 +194,42 @@ class NilDBAPI:
         try:
             node = self.nodes[node_name]
             headers = {
-                'Authorization': f'Bearer {node["jwt"]}',
-                'Content-Type': 'application/json'
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
             }
 
             response = requests.post(
                 f"{node['url']}/api/v1/queries",
                 headers=headers,
-                json=payload if payload is not None else {}
+                json=payload if payload is not None else {},
             )
 
             if response.status_code == 200:
                 return response.json().get("data", [])
             else:
-                print(f"Failed to create query in {node_name}: {response.status_code} {response.text}")
+                print(
+                    f"Failed to create query in {node_name}: {response.status_code} {response.text}"
+                )
                 return []
 
         except Exception as e:
             print(f"Error creating query in {node_name}: {str(traceback.format_exc())}")
             return []
 
+
 class TokenGenerator:
-    
-    def create_jwt(self,secret_key: str = None,
-                org_did: str = None,
-                node_ids: list = None,
-                ttl: int = 3600) -> list:
+
+    def create_jwt(
+        self,
+        secret_key: str = None,
+        org_did: str = None,
+        node_ids: list = None,
+        ttl: int = 3600,
+    ) -> list:
         """
         Create JWTs signed with ES256K for multiple node_ids
         """
-        
+
         # Convert the secret key from hex to bytes
         private_key = bytes.fromhex(secret_key)
         signer = SigningKey.from_string(private_key, curve=SECP256k1)
@@ -184,20 +237,12 @@ class TokenGenerator:
         tokens = []
         for node_id in node_ids:
             # Create payload for each node_id
-            payload = {
-                "iss": org_did,
-                "aud": node_id,
-                "exp": int(time.time()) + ttl
-            }
+            payload = {"iss": org_did, "aud": node_id, "exp": int(time.time()) + ttl}
 
             # Create and sign the JWT
-            token = jwt.encode(
-                payload,
-                signer.to_pem(),
-                algorithm="ES256K"
-            )
+            token = jwt.encode(payload, signer.to_pem(), algorithm="ES256K")
             tokens.append(token)
-        
+
         return tokens
 
     def update_config(self) -> None:
@@ -205,14 +250,19 @@ class TokenGenerator:
         Update the cluster config with short-lived JWTs
         """
         # Create tokens for the nodes with 60s TTL
-        tokens = self.create_jwt(ORG_SECRET_KEY, ORG_DID, [node["did"] for node in NODE_CONFIG.values()], 60)
+        tokens = self.create_jwt(
+            ORG_SECRET_KEY, ORG_DID, [node["did"] for node in NODE_CONFIG.values()], 60
+        )
         for node, token in zip(NODE_CONFIG.values(), tokens):
             node["jwt"] = token
+
 
 class DataEncryption:
     def __init__(self, num_nodes: int):
         self.num_nodes = num_nodes
-        self.secret_key = nilql.ClusterKey.generate({'nodes': [{}] * num_nodes},{'store': True})
+        self.secret_key = nilql.ClusterKey.generate(
+            {"nodes": [{}] * num_nodes}, {"store": True}
+        )
 
     def encrypt_password(self, password: str) -> List[str]:
         """Encrypt password using secret sharing."""
@@ -229,16 +279,17 @@ class DataEncryption:
             decoded_shares = []
             for share in encoded_shares:
                 decoded_shares.append(share)
-                
+
             return str(nilql.decrypt(self.secret_key, decoded_shares))
         except Exception as e:
             raise Exception(f"Decryption failed: {str(traceback.format_exc())}")
 
+
 class SchemaManager:
     def __init__(self):
         self.schema_ids = dict()
-        
-    def define_collection(self,name:str,schema: dict) -> bool:
+
+    def define_collection(self, name: str, schema: dict) -> bool:
         """Define a collection and register it on the nodes."""
         try:
             # Generate and id for the schema
@@ -250,9 +301,7 @@ class SchemaManager:
                 payload = {
                     "_id": schema_id,
                     "name": name,
-                    "keys": [
-                        "_id"
-                    ],
+                    "keys": ["_id"],
                     "schema": schema,
                 }
                 if not nildb_api.create_schema(node_name, payload):
@@ -261,47 +310,55 @@ class SchemaManager:
 
             # Store the schema_id
             self.schema_ids[name] = schema_id
-            schema_ids=json.load(open('schema_structure.json', 'r'))
-            schema_ids["Schema_ids"][name]=schema_id
-            json.dump(schema_ids,open('schema_structure.json', 'w'))
+            schema_ids = json.load(open("schema_structure.json", "r"))
+            schema_ids["Schema_ids"][name] = schema_id
+            json.dump(schema_ids, open("schema_structure.json", "w"))
             return success
         except Exception as e:
             print(f"Error creating schema: {str(traceback.format_exc())}")
             return False
 
-nildb_api=NilDBAPI(NODE_CONFIG)
-token_gen=TokenGenerator()
-schema_manager=SchemaManager()
-encryption=DataEncryption(NUM_NODES)
+
+nildb_api = NilDBAPI(NODE_CONFIG)
+token_gen = TokenGenerator()
+schema_manager = SchemaManager()
+encryption = DataEncryption(NUM_NODES)
+
 
 def init_schema():
-    schema_ids=json.load(open('schema_structure.json', 'r'))
+    schema_ids = json.load(open("schema_structure.json", "r"))
     token_gen.update_config()
-    if schema_ids["Schema_ids"]==dict():
-        schema_data=json.load(open('schema.json', 'r'))
-        schema_manager.define_collection("Token",schema_data["Token"])
-        schema_manager.define_collection("GameDeveloper",schema_data["GameDeveloper"])
-        schema_manager.define_collection("Game",schema_data["Game"])
-        schema_manager.define_collection("User",schema_data["User"])
+    if schema_ids["Schema_ids"] == dict():
+        schema_data = json.load(open("schema.json", "r"))
+        schema_manager.define_collection("Token", schema_data["Token"])
+        schema_manager.define_collection("GameDeveloper", schema_data["GameDeveloper"])
+        schema_manager.define_collection("Game", schema_data["Game"])
+        schema_manager.define_collection("User", schema_data["User"])
     else:
-        schema_manager.schema_ids=schema_ids["Schema_ids"]
+        schema_manager.schema_ids = schema_ids["Schema_ids"]
         print("Schema already initialized")
+
+
 init_schema()
 
 
-def upload_user(email: str, basename: str, password: str, wallet_address: str, private_key: str) -> bool:
+def upload_user(
+    email: str, basename: str, password: str, wallet_address: str, private_key: str
+) -> bool:
     """Create and store encrypted user data across nodes."""
     try:
         # Generate unique User ID
         user_id = str(uuid.uuid4())
-        
+
         # Encrypt sensitive data (password & private_key)
         encrypted_password_shares = encryption.encrypt_password(password)
-        encrypted_private_key_shares = encryption.encrypt_password(private_key)  # Assuming same encryption method
-        
+        encrypted_private_key_shares = encryption.encrypt_password(
+            private_key
+        )  # Assuming same encryption method
+
         # Store shares across nodes
         success = True
-        for i, node_name in enumerate(['node_a', 'node_b', 'node_c']):
+        for i, node_name in enumerate(["node_a", "node_b", "node_c"]):
             user_data = {
                 "_id": user_id,
                 "email": email,
@@ -310,61 +367,78 @@ def upload_user(email: str, basename: str, password: str, wallet_address: str, p
                 "wallet_address": wallet_address,
                 "private_key": encrypted_private_key_shares[i],
             }
-            
+
             print(schema_manager.schema_ids)
-            if not nildb_api.data_upload(node_name, schema_manager.schema_ids["User"], [user_data]):
+            if not nildb_api.data_upload(
+                node_name, schema_manager.schema_ids["User"], [user_data]
+            ):
                 success = False
                 break
-                
+
         return success
     except Exception as e:
         print(f"Error creating user: {str(traceback.format_exc())}")
         return False
+
 
 def fetch_users() -> List[Dict]:
     """Fetch and decrypt user data from nodes."""
     try:
         # Fetch from all nodes
         users = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_users = nildb_api.data_read(node_name, schema_manager.schema_ids["User"])
-            print('node_users', node_users)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_users = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["User"]
+            )
+            print("node_users", node_users)
             for user in node_users:
-                user_id = user['_id']
+                user_id = user["_id"]
                 if user_id not in users:
                     users[user_id] = {
-                        'email': user['email'],
-                        'basename': user['basename'],
-                        'wallet_address': user['wallet_address'],
-                        'password_shares': [],
-                        'private_key_shares': []
+                        "email": user["email"],
+                        "basename": user["basename"],
+                        "wallet_address": user["wallet_address"],
+                        "password_shares": [],
+                        "private_key_shares": [],
                     }
-                users[user_id]['password_shares'].append(user['password'])
-                users[user_id]['private_key_shares'].append(user['private_key'])
-        
+                users[user_id]["password_shares"].append(user["password"])
+                users[user_id]["private_key_shares"].append(user["private_key"])
+
         # Decrypt password & private key
         decrypted_users = []
         for user_id, user_data in users.items():
-            if len(user_data['password_shares']) == NUM_NODES and len(user_data['private_key_shares']) == NUM_NODES:
+            if (
+                len(user_data["password_shares"]) == NUM_NODES
+                and len(user_data["private_key_shares"]) == NUM_NODES
+            ):
                 try:
-                    decrypted_password = encryption.decrypt_password(user_data['password_shares'])
-                    decrypted_private_key = encryption.decrypt_password(user_data['private_key_shares'])
-                    decrypted_users.append({
-                        "Email": user_data['email'],
-                        "Basename": user_data['basename'],
-                        "Wallet Address": user_data['wallet_address'],
-                        "Password": decrypted_password,
-                        "Private Key": decrypted_private_key
-                    })
+                    decrypted_password = encryption.decrypt_password(
+                        user_data["password_shares"]
+                    )
+                    decrypted_private_key = encryption.decrypt_password(
+                        user_data["private_key_shares"]
+                    )
+                    decrypted_users.append(
+                        {
+                            "Email": user_data["email"],
+                            "Basename": user_data["basename"],
+                            "Wallet Address": user_data["wallet_address"],
+                            "Password": decrypted_password,
+                            "Private Key": decrypted_private_key,
+                        }
+                    )
                 except Exception as e:
-                    print(f"Could not decrypt user {user_id}: {str(traceback.format_exc())}")
-                    
+                    print(
+                        f"Could not decrypt user {user_id}: {str(traceback.format_exc())}"
+                    )
+
         return decrypted_users
     except Exception as e:
         print(f"Error fetching users: {str(traceback.format_exc())}")
         return []
 
-def login_user(email: str,password:str) -> Dict:
+
+def login_user(email: str, password: str) -> Dict:
     """Authenticate user based on email filter and decrypt stored credentials."""
     try:
         # Define the filter criteria
@@ -372,23 +446,25 @@ def login_user(email: str,password:str) -> Dict:
 
         # Fetch from all nodes using the filter
         users = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_users = nildb_api.data_read(node_name, schema_manager.schema_ids["User"], filter_dict)
-            print('Filtered Users:', node_users)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_users = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["User"], filter_dict
+            )
+            print("Filtered Users:", node_users)
 
             for user in node_users:
-                user_id = user['_id']
+                user_id = user["_id"]
                 if user_id not in users:
                     users[user_id] = {
-                        'email': user['email'],
-                        'basename': user['basename'],
-                        'wallet_address': user['wallet_address'],
-                        'password_shares': [],
-                        'private_key_shares': []
+                        "email": user["email"],
+                        "basename": user["basename"],
+                        "wallet_address": user["wallet_address"],
+                        "password_shares": [],
+                        "private_key_shares": [],
                     }
-                users[user_id]['password_shares'].append(user['password'])
-                users[user_id]['private_key_shares'].append(user['private_key'])
-        
+                users[user_id]["password_shares"].append(user["password"])
+                users[user_id]["private_key_shares"].append(user["private_key"])
+
         # Validate user data
         if not users:
             print("User not found.")
@@ -398,19 +474,23 @@ def login_user(email: str,password:str) -> Dict:
         user_id, user_data = next(iter(users.items()))
 
         # Ensure all password shares are retrieved before decryption
-        if len(user_data['password_shares']) == NUM_NODES:
-            decrypted_password = encryption.decrypt_password(user_data['password_shares'])
+        if len(user_data["password_shares"]) == NUM_NODES:
+            decrypted_password = encryption.decrypt_password(
+                user_data["password_shares"]
+            )
         else:
             print("Incomplete data, unable to decrypt password.")
             return {}
 
         # Ensure all private key shares are retrieved before decryption
-        if len(user_data['private_key_shares']) == NUM_NODES:
-            decrypted_private_key = encryption.decrypt_password(user_data['private_key_shares'])
+        if len(user_data["private_key_shares"]) == NUM_NODES:
+            decrypted_private_key = encryption.decrypt_password(
+                user_data["private_key_shares"]
+            )
         else:
             print("Incomplete data, unable to decrypt private key.")
             return {}
-        if decrypted_password!=password:
+        if decrypted_password != password:
             return {}
         # Return user details upon successful retrieval
         else:
@@ -419,12 +499,13 @@ def login_user(email: str,password:str) -> Dict:
                 "Basename": user_data["basename"],
                 "Wallet Address": user_data["wallet_address"],
                 "Password": decrypted_password,
-                "Private Key": decrypted_private_key
+                "Private Key": decrypted_private_key,
             }
-    
+
     except Exception as e:
         print(f"Error during login: {str(traceback.format_exc())}")
         return {}
+
 
 # def test_user_methods():
 #     """Driver function to test user upload, fetch, and login."""
@@ -452,7 +533,7 @@ def login_user(email: str,password:str) -> Dict:
 #     token_gen.update_config()
 #     print("\n[3] Logging in user...")
 #     user_data = login_user(email,password)
-    
+
 #     if user_data:
 #         print("Login Successful! Retrieved User Data:")
 #         print(user_data)
@@ -462,7 +543,15 @@ def login_user(email: str,password:str) -> Dict:
 # # Run the test function
 # test_user_methods()
 
-def upload_token(name: str, symbol: str, decimals: int, total_supply: str, contract_address: str, creator: str) -> bool:
+
+def upload_token(
+    name: str,
+    symbol: str,
+    decimals: int,
+    total_supply: str,
+    contract_address: str,
+    creator: str,
+) -> bool:
     """Create and store token data across nodes."""
     try:
         # Generate unique Token ID
@@ -470,7 +559,7 @@ def upload_token(name: str, symbol: str, decimals: int, total_supply: str, contr
 
         # Store token data across nodes
         success = True
-        for node_name in ['node_a', 'node_b', 'node_c']:
+        for node_name in ["node_a", "node_b", "node_c"]:
             token_data = {
                 "_id": token_id,
                 "name": name,
@@ -480,25 +569,30 @@ def upload_token(name: str, symbol: str, decimals: int, total_supply: str, contr
                 "contract_address": contract_address,
                 "creator": creator,
             }
-            if not nildb_api.data_upload(node_name, schema_manager.schema_ids["Token"], [token_data]):
+            if not nildb_api.data_upload(
+                node_name, schema_manager.schema_ids["Token"], [token_data]
+            ):
                 success = False
                 break
-                
+
         return success
     except Exception as e:
         print(f"Error creating token: {str(e)}")
         return False
 
+
 def fetch_tokens() -> List[Dict]:
     """Fetch all token data from nodes."""
     try:
         tokens = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_tokens = nildb_api.data_read(node_name, schema_manager.schema_ids["Token"])
-            print('Fetched Tokens:', node_tokens)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_tokens = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Token"]
+            )
+            print("Fetched Tokens:", node_tokens)
 
             for token in node_tokens:
-                token_id = token['_id']
+                token_id = token["_id"]
                 if token_id not in tokens:
                     tokens[token_id] = {
                         "name": token["name"],
@@ -506,14 +600,15 @@ def fetch_tokens() -> List[Dict]:
                         "decimals": token["decimals"],
                         "total_supply": token["total_supply"],
                         "contract_address": token["contract_address"],
-                        "creator": token["creator"]
+                        "creator": token["creator"],
                     }
 
         return list(tokens.values())
-    
+
     except Exception as e:
         print(f"Error fetching tokens: {str(e)}")
         return []
+
 
 def get_token(symbol: str) -> Dict:
     """Fetch a specific token based on its symbol."""
@@ -521,12 +616,14 @@ def get_token(symbol: str) -> Dict:
         filter_dict = {"symbol": symbol}
 
         tokens = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_tokens = nildb_api.data_read(node_name, schema_manager.schema_ids["Token"], filter_dict)
-            print('Filtered Tokens:', node_tokens)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_tokens = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Token"], filter_dict
+            )
+            print("Filtered Tokens:", node_tokens)
 
             for token in node_tokens:
-                token_id = token['_id']
+                token_id = token["_id"]
                 if token_id not in tokens:
                     tokens[token_id] = {
                         "name": token["name"],
@@ -534,7 +631,7 @@ def get_token(symbol: str) -> Dict:
                         "decimals": token["decimals"],
                         "total_supply": token["total_supply"],
                         "contract_address": token["contract_address"],
-                        "creator": token["creator"]
+                        "creator": token["creator"],
                     }
 
         if not tokens:
@@ -542,10 +639,46 @@ def get_token(symbol: str) -> Dict:
             return {}
 
         return list(tokens.values())[0]  # Return the first match
-    
+
     except Exception as e:
         print(f"Error retrieving token: {str(e)}")
         return {}
+
+
+def get_token_by_gamedev_wallet(wallet: str) -> Dict:
+    """Fetch a specific token based on its symbol."""
+    try:
+        filter_dict = {"creator": wallet}
+
+        tokens = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_tokens = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Token"], filter_dict
+            )
+            print("Filtered Tokens:", node_tokens)
+
+            for token in node_tokens:
+                token_id = token["_id"]
+                if token_id not in tokens:
+                    tokens[token_id] = {
+                        "name": token["name"],
+                        "symbol": token["symbol"],
+                        "decimals": token["decimals"],
+                        "total_supply": token["total_supply"],
+                        "contract_address": token["contract_address"],
+                        "creator": token["creator"],
+                    }
+
+        if not tokens:
+            print("Token not found.")
+            return {}
+
+        return list(tokens.values())[0]  # Return the first match
+
+    except Exception as e:
+        print(f"Error retrieving token: {str(e)}")
+        return {}
+
 
 # def test_token_methods():
 #     """Driver function to test token upload, fetch, and filter search."""
@@ -573,7 +706,7 @@ def get_token(symbol: str) -> Dict:
 
 #     print("\n[3] Fetching specific token by symbol...")
 #     token_data = get_token(symbol)
-    
+
 #     if token_data:
 #         print("Token Found! Retrieved Data:")
 #         print(token_data)
@@ -583,7 +716,20 @@ def get_token(symbol: str) -> Dict:
 # # Run the test function
 # test_token_methods()
 
-def upload_gamedev(gamedev_id:str,email: str, company_name: str, password: str, website: str, description: str, wallet_address: str, private_key: str,verified:bool,total_revenue:int,active_status:bool) -> bool:
+
+def upload_gamedev(
+    gamedev_id: str,
+    email: str,
+    company_name: str,
+    password: str,
+    website: str,
+    description: str,
+    wallet_address: str,
+    private_key: str,
+    verified: bool,
+    total_revenue: int,
+    active_status: bool,
+) -> bool:
     """Create and store GameDev data across nodes."""
     try:
         # Encrypt sensitive data (password & private_key)
@@ -592,7 +738,7 @@ def upload_gamedev(gamedev_id:str,email: str, company_name: str, password: str, 
 
         # Store GameDev data across nodes
         success = True
-        for i, node_name in enumerate(['node_a', 'node_b', 'node_c']):
+        for i, node_name in enumerate(["node_a", "node_b", "node_c"]):
             gamedev_data = {
                 "_id": gamedev_id,
                 "email": email,
@@ -605,58 +751,32 @@ def upload_gamedev(gamedev_id:str,email: str, company_name: str, password: str, 
                 "verified": verified,
                 "total_revenue": total_revenue,
                 "active_status": active_status,
-                "token": ""
+                "token": "",
             }
-            if not nildb_api.data_upload(node_name, schema_manager.schema_ids["GameDeveloper"], [gamedev_data]):
+            if not nildb_api.data_upload(
+                node_name, schema_manager.schema_ids["GameDeveloper"], [gamedev_data]
+            ):
                 success = False
                 break
-                
+
         return success
     except Exception as e:
         print(f"Error creating GameDev account: {str(e)}")
         return False
 
+
 def fetch_gamedevs() -> List[Dict]:
     """Fetch all GameDev data from nodes."""
     try:
         gamedevs = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_gamedevs = nildb_api.data_read(node_name, schema_manager.schema_ids["GameDeveloper"])
-            print('Fetched GameDevs:', node_gamedevs)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_gamedevs = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["GameDeveloper"]
+            )
+            print("Fetched GameDevs:", node_gamedevs)
 
             for gamedev in node_gamedevs:
-                gamedev_id = gamedev['_id']
-                if gamedev_id not in gamedevs:
-                    gamedevs[gamedev_id] = {
-                        "email": gamedev["email"],
-                        "company_name": gamedev["company_name"],
-                        "website": gamedev["website"],
-                        "description": gamedev["description"],
-                        "wallet_address": gamedev["wallet_address"],
-                        "verified": gamedev["verified"],
-                        "total_revenue": gamedev["total_revenue"],
-                        "active_status": gamedev["active_status"],
-                        "token": gamedev["token"]
-                    }
-
-        return list(gamedevs.values())
-
-    except Exception as e:
-        print(f"Error fetching GameDev accounts: {str(e)}")
-        return []
-
-def login_gamedev(email: str,password:str) -> Dict:
-    """Authenticate GameDev based on email filter and decrypt stored credentials."""
-    try:
-        filter_dict = {"email": email}
-
-        gamedevs = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_gamedevs = nildb_api.data_read(node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict)
-            print('Filtered GameDevs:', node_gamedevs)
-
-            for gamedev in node_gamedevs:
-                gamedev_id = gamedev['_id']
+                gamedev_id = gamedev["_id"]
                 if gamedev_id not in gamedevs:
                     gamedevs[gamedev_id] = {
                         "email": gamedev["email"],
@@ -668,11 +788,48 @@ def login_gamedev(email: str,password:str) -> Dict:
                         "total_revenue": gamedev["total_revenue"],
                         "active_status": gamedev["active_status"],
                         "token": gamedev["token"],
-                        "password_shares": [],
-                        "private_key_shares": []
                     }
-                gamedevs[gamedev_id]['password_shares'].append(gamedev['password'])
-                gamedevs[gamedev_id]['private_key_shares'].append(gamedev['private_key'])
+
+        return list(gamedevs.values())
+
+    except Exception as e:
+        print(f"Error fetching GameDev accounts: {str(e)}")
+        return []
+
+
+def login_gamedev(email: str, password: str) -> Dict:
+    """Authenticate GameDev based on email filter and decrypt stored credentials."""
+    try:
+        filter_dict = {"email": email}
+
+        gamedevs = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_gamedevs = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
+            )
+            print("Filtered GameDevs:", node_gamedevs)
+
+            for gamedev in node_gamedevs:
+                gamedev_id = gamedev["_id"]
+                if gamedev_id not in gamedevs:
+                    gamedevs[gamedev_id] = {
+                        "_id": gamedev_id,
+                        "email": gamedev["email"],
+                        "company_name": gamedev["company_name"],
+                        "website": gamedev["website"],
+                        "description": gamedev["description"],
+                        "wallet_address": gamedev["wallet_address"],
+                        "verified": gamedev["verified"],
+                        "total_revenue": gamedev["total_revenue"],
+                        "active_status": gamedev["active_status"],
+                        "token": gamedev["token"],
+                        "password_shares": [],
+                        "private_key_shares": [],
+                    }
+                gamedevs[gamedev_id]["password_shares"].append(gamedev["password"])
+                gamedevs[gamedev_id]["private_key_shares"].append(
+                    gamedev["private_key"]
+                )
 
         if not gamedevs:
             print("GameDev not found.")
@@ -682,19 +839,23 @@ def login_gamedev(email: str,password:str) -> Dict:
         gamedev_id, gamedev_data = next(iter(gamedevs.items()))
 
         # Ensure all password shares are retrieved before decryption
-        if len(gamedev_data['password_shares']) == NUM_NODES:
-            decrypted_password = encryption.decrypt_password(gamedev_data['password_shares'])
+        if len(gamedev_data["password_shares"]) == NUM_NODES:
+            decrypted_password = encryption.decrypt_password(
+                gamedev_data["password_shares"]
+            )
         else:
             print("Incomplete data, unable to decrypt password.")
             return {}
 
         # Ensure all private key shares are retrieved before decryption
-        if len(gamedev_data['private_key_shares']) == NUM_NODES:
-            decrypted_private_key = encryption.decrypt_password(gamedev_data['private_key_shares'])
+        if len(gamedev_data["private_key_shares"]) == NUM_NODES:
+            decrypted_private_key = encryption.decrypt_password(
+                gamedev_data["private_key_shares"]
+            )
         else:
             print("Incomplete data, unable to decrypt private key.")
             return {}
-        if decrypted_password!=password:
+        if decrypted_password != password:
             return {}
         else:
             return {
@@ -709,12 +870,137 @@ def login_gamedev(email: str,password:str) -> Dict:
                 "Active Status": gamedev_data["active_status"],
                 "Token": gamedev_data["token"],
                 "Password": decrypted_password,
-                "Private Key": decrypted_private_key
+                "Private Key": decrypted_private_key,
             }
 
     except Exception as e:
         print(f"Error during GameDev login: {str(e)}")
         return {}
+
+
+def get_gamedev_by_id(uid: str) -> Dict:
+    """Authenticate GameDev based on email filter and decrypt stored credentials."""
+    try:
+        filter_dict = {"_id": uid}
+
+        gamedevs = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_gamedevs = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
+            )
+            print("Filtered GameDevs:", node_gamedevs)
+
+            for gamedev in node_gamedevs:
+                gamedev_id = gamedev["_id"]
+                if gamedev_id not in gamedevs:
+                    gamedevs[gamedev_id] = {
+                        "_id": gamedev_id,
+                        "email": gamedev["email"],
+                        "company_name": gamedev["company_name"],
+                        "website": gamedev["website"],
+                        "description": gamedev["description"],
+                        "wallet_address": gamedev["wallet_address"],
+                        "verified": gamedev["verified"],
+                        "total_revenue": gamedev["total_revenue"],
+                        "active_status": gamedev["active_status"],
+                        "token": gamedev["token"],
+                        "password_shares": [],
+                        "private_key_shares": [],
+                    }
+                gamedevs[gamedev_id]["password_shares"].append(gamedev["password"])
+                gamedevs[gamedev_id]["private_key_shares"].append(
+                    gamedev["private_key"]
+                )
+
+        if not gamedevs:
+            print("GameDev not found.")
+            return {}
+
+        # Since email is unique, there should be only one match
+        gamedev_id, gamedev_data = next(iter(gamedevs.items()))
+
+        # Ensure all password shares are retrieved before decryption
+        if len(gamedev_data["password_shares"]) == NUM_NODES:
+            decrypted_password = encryption.decrypt_password(
+                gamedev_data["password_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt password.")
+            return {}
+
+        # Ensure all private key shares are retrieved before decryption
+        if len(gamedev_data["private_key_shares"]) == NUM_NODES:
+            decrypted_private_key = encryption.decrypt_password(
+                gamedev_data["private_key_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt private key.")
+            return {}
+        return {
+            "_id": gamedev_data["_id"],
+            "Email": gamedev_data["email"],
+            "Company Name": gamedev_data["company_name"],
+            "Website": gamedev_data["website"],
+            "Description": gamedev_data["description"],
+            "Wallet Address": gamedev_data["wallet_address"],
+            "Verified": gamedev_data["verified"],
+            "Total Revenue": gamedev_data["total_revenue"],
+            "Active Status": gamedev_data["active_status"],
+            "Token": gamedev_data["token"],
+            "Password": decrypted_password,
+            "Private Key": decrypted_private_key,
+        }
+
+    except Exception as e:
+        print(f"Error during GameDev login: {str(e)}")
+        return {}
+
+
+def update_gamedev(
+    gamedev_id: str,
+    email: str,
+    company_name: str,
+    password: str,
+    website: str,
+    description: str,
+    wallet_address: str,
+    private_key: str,
+    verified: bool,
+    total_revenue: int,
+    active_status: bool,
+    token: str,
+) -> bool:
+    """Create and store GameDev data across nodes."""
+    try:
+        filter_dict = {"_id": gamedev_id}
+        # Store GameDev data across nodes
+        success = True
+        for i, node_name in enumerate(["node_a", "node_b", "node_c"]):
+            gamedev_data = {
+                "email": email,
+                "company_name": company_name,
+                "website": website,
+                "description": description,
+                "wallet_address": wallet_address,
+                "verified": verified,
+                "total_revenue": total_revenue,
+                "active_status": active_status,
+                "token": token,
+            }
+            if not nildb_api.data_update(
+                node_name,
+                schema_manager.schema_ids["GameDeveloper"],
+                filter_dict,
+                gamedev_data,
+            ):
+                success = False
+                break
+
+        return success
+    except Exception as e:
+        print(f"Error creating GameDev account: {str(e)}")
+        return False
+
 
 # def test_gamedev_methods():
 #     """Driver function to test GameDev upload, fetch, and login."""
@@ -743,7 +1029,7 @@ def login_gamedev(email: str,password:str) -> Dict:
 
 #     print("\n[3] Logging in GameDev...")
 #     gamedev_data = login_gamedev(email)
-    
+
 #     if gamedev_data:
 #         print("Login Successful! Retrieved GameDev Data:")
 #         print(gamedev_data)
@@ -753,7 +1039,16 @@ def login_gamedev(email: str,password:str) -> Dict:
 # # Run the test function
 # test_gamedev_methods()
 
-def upload_game(title: str, description: str, prompt: str, cost_in_eth: float, reward_in_tokens: float, card_type: int, developer_id: str) -> bool:
+
+def upload_game(
+    title: str,
+    description: str,
+    prompt: str,
+    cost_in_eth: float,
+    reward_in_tokens: float,
+    card_type: int,
+    developer_id: str,
+) -> bool:
     """Create and store Game data across nodes."""
     try:
         # Generate unique Game ID
@@ -761,7 +1056,7 @@ def upload_game(title: str, description: str, prompt: str, cost_in_eth: float, r
 
         # Store game data across nodes
         success = True
-        for node_name in ['node_a', 'node_b', 'node_c']:
+        for node_name in ["node_a", "node_b", "node_c"]:
             game_data = {
                 "_id": game_id,
                 "title": title,
@@ -771,27 +1066,32 @@ def upload_game(title: str, description: str, prompt: str, cost_in_eth: float, r
                 "reward_in_tokens": reward_in_tokens,
                 "game_type": card_type,
                 "revenue": 0,
-                "developer_id": developer_id
+                "game_developer": developer_id,
             }
-            if not nildb_api.data_upload(node_name, schema_manager.schema_ids["Game"], [game_data]):
+            if not nildb_api.data_upload(
+                node_name, schema_manager.schema_ids["Game"], [game_data]
+            ):
                 success = False
                 break
-                
+
         return success
     except Exception as e:
         print(f"Error creating game: {str(e)}")
         return False
 
+
 def fetch_games() -> List[Dict]:
     """Fetch all Game data from nodes."""
     try:
         games = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_games = nildb_api.data_read(node_name, schema_manager.schema_ids["Game"])
-            print('Fetched Games:', node_games)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_games = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Game"]
+            )
+            print("Fetched Games:", node_games)
 
             for game in node_games:
-                game_id = game['_id']
+                game_id = game["_id"]
                 if game_id not in games:
                     games[game_id] = {
                         "title": game["title"],
@@ -801,7 +1101,7 @@ def fetch_games() -> List[Dict]:
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
                         "revenue": game["revenue"],
-                        "developer_id": game["developer_id"]
+                        "game_developer": game["game_developer"],
                     }
 
         return list(games.values())
@@ -810,18 +1110,21 @@ def fetch_games() -> List[Dict]:
         print(f"Error fetching games: {str(e)}")
         return []
 
+
 def get_game(title: str) -> Dict:
     """Fetch a specific game based on its title."""
     try:
         filter_dict = {"title": title}
 
         games = {}
-        for node_name in ['node_a', 'node_b', 'node_c']:
-            node_games = nildb_api.data_read(node_name, schema_manager.schema_ids["Game"], filter_dict)
-            print('Filtered Games:', node_games)
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_games = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Game"], filter_dict
+            )
+            print("Filtered Games:", node_games)
 
             for game in node_games:
-                game_id = game['_id']
+                game_id = game["_id"]
                 if game_id not in games:
                     games[game_id] = {
                         "title": game["title"],
@@ -831,7 +1134,7 @@ def get_game(title: str) -> Dict:
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
                         "revenue": game["revenue"],
-                        "developer_id": game["developer_id"]
+                        "game_developer": game["game_developer"],
                     }
 
         if not games:
@@ -839,7 +1142,91 @@ def get_game(title: str) -> Dict:
             return {}
 
         return list(games.values())[0]  # Return the first match
-    
+
     except Exception as e:
         print(f"Error retrieving game: {str(e)}")
         return {}
+
+
+def get_games_by_gamedev(gamedev_id: str) -> Dict:
+    """Fetch a specific game based on its title."""
+    try:
+        filter_dict = {"game_developer": gamedev_id}
+
+        games = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_games = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Game"], filter_dict
+            )
+            print("Filtered Games:", node_games)
+
+            for game in node_games:
+                game_id = game["_id"]
+                if game_id not in games:
+                    games[game_id] = {
+                        "title": game["title"],
+                        "description": game["description"],
+                        "prompt": game["prompt"],
+                        "cost_in_eth": game["cost_in_eth"],
+                        "reward_in_tokens": game["reward_in_tokens"],
+                        "game_type": game["game_type"],
+                        "revenue": game["revenue"],
+                        "game_developer": game["game_developer"],
+                    }
+
+        if not games:
+            print("Game not found.")
+            return {}
+
+        return {"games": list(games.values())}
+
+    except Exception as e:
+        print(f"Error retrieving game: {str(e)}")
+        return {}
+
+
+def initialize_agent(wallet_data=None):
+    """Initialize the agent with CDP Agentkit."""
+    # Initialize LLM.
+    llm = ChatOpenAI(model="gpt-4o")
+
+    # Configure CDP Agentkit Langchain Extension.
+    values = {}
+    if wallet_data is not None:
+        # If there is a persisted agentic wallet, load it and pass to the CDP Agentkit Wrapper.
+        values = {"cdp_wallet_data": wallet_data}
+
+    agentkit = CdpAgentkitWrapper(**values)
+
+    # Initialize CDP Agentkit Toolkit and get tools.
+    cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
+    tools = cdp_toolkit.get_tools()
+    all_tools = []
+    for i in tools:
+        print(i)
+        if i.name == "deploy_token":
+            all_tools.append(i)
+    # Store buffered conversation history in memory.
+    memory = MemorySaver()
+    config = {"configurable": {"thread_id": "CDP Agentkit Chatbot Example!"}}
+
+    # Create ReAct Agent using the LLM and CDP Agentkit tools.
+    return (
+        create_react_agent(
+            llm,
+            tools=all_tools,
+            checkpointer=memory,
+            state_modifier=(
+                "You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. "
+                "You are empowered to interact onchain using your tools. If you ever need funds, you can request "
+                "them from the faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet "
+                "details and request funds from the user. Before executing your first action, get the wallet details "
+                "to see what network you're on. If there is a 5XX (internal) HTTP error code, ask the user to try "
+                "again later. If someone asks you to do something you can't do with your currently available tools, "
+                "you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, "
+                "recommend they go to docs.cdp.coinbase.com for more information. Be concise and helpful with your "
+                "responses. Refrain from restating your tools' descriptions unless it is explicitly requested."
+            ),
+        ),
+        config,
+    )

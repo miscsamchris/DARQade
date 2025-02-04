@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameDev Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <!-- Modal -->
+    <div id="create-token-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 relative z-10">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Create Token</h2>
+            <form id="createTokenForm" class="space-y-6">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Token Name</label>
+                    <input type="text" id="name" name="name"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required>
+                </div>
+                <div>
+                    <label for="symbol" class="block text-sm font-medium text-gray-700 mb-1">Token Symbol</label>
+                    <input type="text" id="symbol" name="symbol"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required>
+                </div>
+                <div>
+                    <label for="decimals" class="block text-sm font-medium text-gray-700 mb-1">Decimals</label>
+                    <input type="number" id="decimals" name="decimals"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required>
+                </div>
+                <div>
+                    <label for="total_supply" class="block text-sm font-medium text-gray-700 mb-1">Total Supply</label>
+                    <input type="number" id="total_supply" name="total_supply"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                        required>
+                </div>
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Create
+                        Token</button>
+                    <button type="button" id="close-modal"
+                        class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container max-w-4xl mx-auto p-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">GameDev Platform</h1>
+            <p class="text-gray-600">Create and manage your game tokens with ease</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Sign Up Form -->
+            <div id="signup-form" class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Sign Up</h2>
+                <form id="signupForm" class="space-y-4">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="email" name="email"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required>
+                    </div>
+                    <div>
+                        <label for="company_name" class="block text-sm font-medium text-gray-700 mb-1">Company
+                            Name</label>
+                        <input type="text" id="company_name" name="company_name"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="password" name="password"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required>
+                    </div>
+                    <div>
+                        <label for="website" class="block text-sm font-medium text-gray-700 mb-1">Website
+                            (Optional)</label>
+                        <input type="text" id="website" name="website"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description
+                            (Optional)</label>
+                        <textarea id="description" name="description" rows="3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"></textarea>
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Sign
+                        Up</button>
+                </form>
+                <div id="signup-message" class="mt-4 text-green-600 text-center hidden"></div>
+                <div id="signup-error" class="mt-4 text-red-600 text-center hidden"></div>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form" class="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Login</h2>
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label for="loginEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="loginEmail" name="loginEmail"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required>
+                    </div>
+                    <div>
+                        <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="loginPassword" name="loginPassword"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            required>
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">Login</button>
+                </form>
+                <div id="login-message" class="mt-4 text-green-600 text-center hidden"></div>
+                <div id="login-error" class="mt-4 text-red-600 text-center hidden"></div>
+            </div>
+
+            <!-- User Info -->
+            <div id="user-info" class="md:col-span-2 bg-white rounded-xl shadow-lg p-8 hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard</h2>
+                <div class="space-y-4">
+                    <p id="welcome-message" class="text-gray-700"></p>
+                    <p id="wallet-address" class="text-gray-700 font-mono bg-gray-50 p-3 rounded-lg"></p>
+                    <button id="logout-button"
+                        class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const signupForm = document.getElementById('signupForm');
+        const loginForm = document.getElementById('loginForm');
+        const signupMessage = document.getElementById('signup-message');
+        const signupError = document.getElementById('signup-error');
+        const loginMessage = document.getElementById('login-message');
+        const loginError = document.getElementById('login-error');
+
+        //To be deleted
+        const userInfo = document.getElementById('user-info');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const walletAddress = document.getElementById('wallet-address');
+        const logoutButton = document.getElementById('logout-button');
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            signupMessage.classList.add('hidden');
+            signupError.classList.add('hidden');
+
+            const formData = new FormData(signupForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await axios.post('/gamedev/signup', data);
+                signupMessage.textContent = response.data.message;
+                signupMessage.classList.remove('hidden');
+                signupForm.reset();
+            } catch (error) {
+                signupError.textContent = error.response?.data?.error || "An error occurred during signup.";
+                signupError.classList.remove('hidden');
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginMessage.classList.add('hidden');
+            loginError.classList.add('hidden');
+
+            const formData = new FormData(loginForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await axios.post('/gamedev/login', data);
+                localStorage.setItem('token', JSON.stringify(response.data));
+                loginMessage.textContent = response.data.message;
+                loginMessage.classList.remove('hidden');
+                loginForm.reset();
+                showUserInfo(response.data);
+            } catch (error) {
+                loginError.textContent = error.response?.data?.error || "An error occurred during login.";
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        function showUserInfo(userData) {
+            alert("User data: " + JSON.stringify(userData));
+            alert(userData.hastoken);
+            document.getElementById('signup-form').classList.add('hidden');
+            document.getElementById('login-form').classList.add('hidden');
+            userInfo.classList.remove('hidden');
+            welcomeMessage.textContent = `Welcome back, ${userData.company_name || 'User'}!`;
+            if (userData.wallet_address) {
+                walletAddress.textContent = `Wallet Address: ${userData.wallet_address}`;
+            }
+            if (userData.hastoken == "false") {
+                showCreateTokenModal(userData.uuid);
+            }
+            else {
+                window.location.href = "{{ url_for('dash') }}";
+            }
+        }
+
+        function showCreateTokenModal(uuid) {
+            const modal = document.getElementById('create-token-modal');
+            const createTokenForm = document.getElementById('createTokenForm');
+
+            modal.classList.remove('hidden');
+
+            createTokenForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(createTokenForm);
+                const data = { ...Object.fromEntries(formData.entries()), uuid };
+
+                try {
+                    const response = await axios.post('/create_token', data);
+                    alert(`Token created successfully!\nContract Address: ${response.data.contract_address}`);
+                    modal.classList.add('hidden');
+                    createTokenForm.reset();
+                    window.location.href = "{{ url_for('dash') }}";
+                } catch (error) {
+                    console.error("Error creating token:", error.response?.data || error.message);
+                    alert("Error creating token. Please check the console for details.");
+                }
+            });
+
+            document.getElementById('close-modal').addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        }
+
+        // Check for existing session
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            showUserInfo(JSON.parse(storedToken));
+        }
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            userInfo.classList.add('hidden');
+            document.getElementById('signup-form').classList.remove('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+        });
+    </script>
+</body>
+
+</html>
