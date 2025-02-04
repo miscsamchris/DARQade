@@ -1,0 +1,198 @@
+{
+    "Token": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "total_supply": {
+                    "type": "string"
+                },
+                "contract_address": {
+                    "type": "string"
+                },
+                "creator": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "symbol",
+                "decimals",
+                "total_supply",
+                "contract_address",
+                "creator",
+                "_id"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "GameDeveloper": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "format": "email"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "wallet_address": {
+                    "type": "string"
+                },
+                "private_key": {
+                    "type": "string"
+                },
+                "_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "verified": {
+                    "type": "boolean"
+                },
+                "total_revenue": {
+                    "type": "number"
+                },
+                "active_status": {
+                    "type": "boolean"
+                },
+                "token": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "email",
+                "company_name",
+                "password",
+                "wallet_address",
+                "private_key",
+                "_id",
+                "verified",
+                "total_revenue",
+                "active_status",
+                "token"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "Game": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "cost_in_eth": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "reward_in_tokens": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "card_type": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "revenue": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "game_developer": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "_id",
+                "title",
+                "description",
+                "prompt",
+                "cost_in_eth",
+                "reward_in_tokens",
+                "card_type",
+                "created_at",
+                "revenue",
+                "game_developer"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "User": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "basename": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "wallet_address": {
+                    "type": "string"
+                },
+                "private_key": {
+                    "type": "string"
+                },
+                "_id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "email",
+                "basename",
+                "password",
+                "wallet_address",
+                "private_key",
+                "_id"
+            ],
+            "additionalProperties": false
+        }
+    }
+}
