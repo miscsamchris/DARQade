@@ -1,4 +1,12 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    redirect,
+    url_for,
+    make_response,
+)
 import os
 import uuid
 import requests
@@ -9,8 +17,10 @@ import datetime
 import dotenv, os
 import utils
 from werkzeug.utils import secure_filename
-import json
-from langchain.tools import Tool
+import json, qrcode, io
+from cdp_langchain.tools import CdpTool
+from pydantic import BaseModel, Field
+from typing import Union
 
 dotenv.load_dotenv()
 install_solc("0.8.0")
@@ -182,6 +192,31 @@ def get_wallet_from_uuid(myuuid):
         return None, f"Failed to create wallet: {str(e)}"
 
 
+class EthBalanceInput(BaseModel):
+    wallet_address: str = Field(..., description="The Ethereum wallet address.")
+
+
+class PayGameFeeInput(BaseModel):
+    user_uuid: str = Field(..., description="The user's UUID.")
+    amount: float = Field(..., description="The amount of ETH to send (in ether).")
+    recipient_wallet: str = Field(
+        ..., description="The wallet address that will receive the game fee."
+    )
+
+
+class TransferTokenInput(BaseModel):
+    token_address: str = Field(..., description="The ERC20 token contract address.")
+    user_uuid: str = Field(
+        ..., description="The user ID of the destination wallet address."
+    )
+    amount: float = Field(
+        ..., description="The amount of tokens to transfer (in human-readable units)."
+    )
+    gamedev_uuid: str = Field(
+        ..., description="The gamedev user's UUID to look up their private key."
+    )
+
+
 ########################################
 # 6. ETH Balance Tool
 ########################################
@@ -202,16 +237,6 @@ def eth_balance_tool(wallet_address: str) -> str:
         return json.dumps(result)
     except Exception as e:
         return json.dumps({"error": str(e)})
-
-
-eth_balance_tool_instance = Tool(
-    name="eth_balance",
-    func=eth_balance_tool,
-    description=(
-        "Retrieve the ETH balance of a wallet. "
-        "Input parameter: wallet_address (str)."
-    ),
-)
 
 
 ########################################
@@ -258,19 +283,6 @@ def pay_game_fee_tool(user_uuid: str, amount: float, recipient_wallet: str) -> s
     )
 
 
-pay_game_fee_tool_instance = Tool(
-    name="pay_game_fee",
-    func=pay_game_fee_tool,
-    description=(
-        "Pay a game fee by transferring ETH from a user's account to a specified wallet. "
-        "Input parameters: user_uuid (str), amount (float, in ether), recipient_wallet (str)."
-    ),
-)
-
-import json
-from langchain.tools import Tool
-
-
 def transfer_token_tool(
     token_address: str, user_uuid: str, amount: float, gamedev_uuid: str
 ) -> str:
@@ -287,6 +299,7 @@ def transfer_token_tool(
         A JSON string containing a success message and the transaction hash, or an error message.
     """
     # Retrieve the gamedev's details from the database
+    print(gamedev_uuid)
     utils.token_gen.update_config()
     gamedev = utils.get_gamedev_by_id(gamedev_uuid)
     if not gamedev:
@@ -341,16 +354,6 @@ def transfer_token_tool(
     return json.dumps(
         {"message": "Transfer Successful", "transaction_hash": web3.to_hex(tx_hash)}
     )
-
-
-transfer_token_tool_instance = Tool(
-    name="transfer_token",
-    func=transfer_token_tool,
-    description=(
-        "Transfer tokens from a gamedev's wallet to another address. "
-        "Input parameters: token_address (str), user_uuid (str), amount (float), gamedev_uuid (str)."
-    ),
-)
 
 
 @app.route("/gamedev/login", methods=["POST"])
@@ -647,6 +650,36 @@ def initialize_agent():
     cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
     tools = cdp_toolkit.get_tools()
     all_tools = []
+    eth_balance_tool_instance = CdpTool(
+        name="eth_balance",
+        func=eth_balance_tool,
+        description=(
+            "Retrieve the ETH balance of a wallet. "
+            "Input parameter: wallet_address (str)."
+        ),
+        args_schema=PayGameFeeInput,
+        cdp_agentkit_wrapper=agentkit,
+    )
+    pay_game_fee_tool_instance = CdpTool(
+        name="pay_game_fee",
+        func=pay_game_fee_tool,
+        description=(
+            "Pay a game fee by transferring ETH from a user's account to a specified wallet. "
+            "Input parameters: user_uuid (str), amount (float, in ether), recipient_wallet (str)."
+        ),
+        args_schema=PayGameFeeInput,
+        cdp_agentkit_wrapper=agentkit,
+    )
+    transfer_token_tool_instance = CdpTool(
+        name="transfer_token",
+        func=transfer_token_tool,
+        description=(
+            "Transfer tokens from a gamedev's wallet to another address. "
+            "Input parameters: token_address (str), user_uuid (str), amount (float), gamedev_uuid (str)."
+        ),
+        args_schema=TransferTokenInput,
+        cdp_agentkit_wrapper=agentkit,
+    )
     for tool in tools:
         # For this example we only add the "deploy_token" tool.
         if tool.name == "deploy_token":
@@ -751,8 +784,9 @@ def start_game():
     gamedev = utils.get_gamedev_by_id(game["game_developer"])
     if gamedev == {}:
         return jsonify({"error": "GameDev not found."}), 404
-    prompt_suffix = f"""\n\n The Game Fee is {game.get("cost_in_eth")}. You need to deduct this on the start of the game everytime. This is absolutely important.
-    The Reward for sucess is {game.get("reward_in_tokens")}. You need to add this to the user's wallet in case the user won.
+    prompt_suffix = f"""\n\n The amount is {game.get("cost_in_eth")} and the recipient_wallet is  {gamedev.get("Wallet Address")}. You need to deduct this on the start of the game everytime. This is absolutely important.
+    The Reward for sucess is {game.get("reward_in_tokens")}. You need to add this to the user's wallet in case the user won. You need to use the transfer_token tool for this. 
+    The Game Developer uuid is {game["game_developer"]}.
     The user UUID is {user_uuid}. This is important for the payment of the game fee.
     The Token address for the reward token is {gamedev["Token"]}."""
     # Initialize a new agent instance.
@@ -840,13 +874,64 @@ def get_profile_info(user_id):
     user = utils.get_user_by_id(user_id)
     if user == {}:
         return jsonify({"error": "User not found."}), 404
-
+    print(json.loads(eth_balance_tool(user["Wallet Address"])).get("eth_balance", 0))
     user_profile = {
         "email": user["Email"],
         "basename": user["Basename"],
         "wallet": get_address_from_basename(user["Basename"]),
+        "custodial": user["Wallet Address"],
+        "balance": json.loads(eth_balance_tool(user["Wallet Address"])).get(
+            "eth_balance", 0
+        ),
     }
     return jsonify(user_profile), 200
+
+
+@app.route("/profile/<user_id>/tokens", methods=["GET"])
+def get_profile_tokens(user_id):
+    # In a real app you would extract the user identifier from the session or request token
+    # and then fetch the corresponding profile from your database.
+    utils.token_gen.update_config()
+    user = utils.get_user_by_id(user_id)
+    if user == {}:
+        return jsonify({"error": "User not found."}), 404
+    utils.token_gen.update_config()
+    tokens = utils.fetch_tokens()
+    if tokens == []:
+        return jsonify({"error": "Tokens not found."}), 404
+    wallet_address = user["Wallet Address"]
+    tk_data = []
+    for token in tokens:
+        token_address = token["contract_address"]
+        ERC20_ABI = contract_interface["abi"]
+        contract = web3.eth.contract(address=token_address, abi=ERC20_ABI)
+
+        balance = contract.functions.balanceOf(wallet_address).call()
+        decimals = contract.functions.decimals().call()
+        tk_data.append(
+            {
+                "Token": token["name"],
+                "Symbol": token["symbol"],
+                "balance": balance / (10**decimals),
+            }
+        )
+    return jsonify(tk_data), 200
+
+
+@app.route("/profile/<user_id>/qr", methods=["GET"])
+def wallet_qr(user_id):
+    utils.token_gen.update_config()
+    user = utils.get_user_by_id(user_id)
+    if user == {}:
+        return jsonify({"error": "User not found."}), 404
+    img = qrcode.make(user["Wallet Address"])
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    response = make_response(buffer.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=QRcode.png"
+    response.mimetype = "image/png"
+    return response
 
 
 if __name__ == "__main__":

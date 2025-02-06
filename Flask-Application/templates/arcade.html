@@ -133,9 +133,14 @@
       <!-- Modal Container -->
       <div class="glass relative rounded-xl border border-indigo-600/30 p-6 w-11/12 max-w-3xl min-h-[500px] flex flex-col">
         <!-- Close Button -->
-        <button onclick="hideProfileModal()" class="absolute top-2 right-2 text-white text-2xl focus:outline-none">
-          <i class="ri-close-line"></i>
-        </button>
+        <div class="flex justify-end mb-4">
+            <button
+              onclick="hideProfileModal()"
+              class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded focus:outline-none"
+            >
+              Close
+            </button>
+          </div>
         <!-- Tab Buttons -->
         <div class="flex mb-4">
           <button id="profile-tab-info" class="profile-tab-btn tab-active rounded-l px-4 py-2" onclick="switchProfileTab('info')">
@@ -155,25 +160,26 @@
             <h3 class="text-xl font-bold mb-4">User Information</h3>
             <p>Email: <span id="profile-email">Loading...</span></p>
             <p>BaseName: <span id="profile-basename">Loading...</span></p>
-            <!-- Add more user information as needed -->
+            <p>Wallet Address: <span id="wallet-address">Loading...</span></p>
+
+            <!-- You can display additional fields (for example, custodial) if desired -->
           </div>
           <!-- Token Balances Content -->
           <div id="profile-tokens" class="profile-tab-content hidden">
             <h3 class="text-xl font-bold mb-4">Token Balances</h3>
             <ul>
-              <li>Token A: <span id="balance-token-a">0</span></li>
-              <li>Token B: <span id="balance-token-b">0</span></li>
-              <li>Token C: <span id="balance-token-c">0</span></li>
-              <!-- Add more tokens if needed -->
+              <!-- Token list items will be injected here -->
             </ul>
           </div>
           <!-- Wallet Content -->
           <div id="profile-wallet" class="profile-tab-content hidden">
             <h3 class="text-xl font-bold mb-4">Wallet Information</h3>
+            <!-- If you need an ETH balance from another source, you could update it here -->
             <p>ETH Balance: <span id="eth-balance">0</span> ETH</p>
-            <p>Wallet Address: <span id="wallet-address">Loading...</span></p>
+            <p>Custodial Wallet Address: <span id="custodial-address">Loading...</span></p>
             <div class="mt-4">
               <h4 class="font-bold mb-2">QR Code:</h4>
+              <!-- The QR code is now provided by the backend endpoint -->
               <img id="wallet-qr" src="" alt="Wallet QR Code" class="w-48 h-48 object-contain">
             </div>
           </div>
@@ -345,28 +351,60 @@
       document.addEventListener("DOMContentLoaded", fetchArcadeGames);
 
       // -------------------------------
-      // My Profile Modal Functions
+      // My Profile Modal Functions (modified to use endpoints)
       // -------------------------------
 
       function showProfileModal() {
-        // Populate profile info from localStorage token data.
         const token = JSON.parse(localStorage.getItem("token"));
-        if (token) {
-          document.getElementById("profile-email").textContent = token.email || "N/A";
-          document.getElementById("profile-basename").textContent = token.basename || "N/A";
-          document.getElementById("wallet-address").textContent = token.wallet || "N/A";
-          document.getElementById("eth-balance").textContent = token.eth_balance || "0";
-          // Generate a QR code for the wallet address (using an external API)
-          if (token.wallet) {
-            document.getElementById("wallet-qr").src =
-              "https://api.qrserver.com/v1/create-qr-code/?data=" +
-              encodeURIComponent(token.wallet) +
-              "&size=150x150";
-          } else {
-            document.getElementById("wallet-qr").src = "";
-          }
+        if (!token || !token.uuid) {
+          alert("User not logged in");
+          return;
         }
+        // Use the stored user UUID as the user_id for the endpoints.
+        const userId = token.uuid;
+
+        // Show the profile modal.
         document.getElementById("profile-modal").classList.remove("hidden");
+
+        // --- Fetch Profile Info ---
+        axios.get(`/profile/${userId}/info`)
+          .then(response => {
+            const data = response.data;
+            document.getElementById("profile-email").textContent = data.email || "N/A";
+            document.getElementById("profile-basename").textContent = data.basename || "N/A";
+            document.getElementById("wallet-address").textContent = data.wallet || "N/A";
+            document.getElementById("custodial-address").textContent = data.custodial || "N/A";
+            document.getElementById("eth-balance").textContent = data.balance || "N/A";
+          })
+          .catch(error => {
+            console.error("Error fetching profile info:", error);
+            document.getElementById("profile-email").textContent = "Error";
+            document.getElementById("profile-basename").textContent = "Error";
+            document.getElementById("wallet-address").textContent = "Error";
+          });
+
+        // --- Fetch Token Balances ---
+        // (Note: Here we assume that the token balances endpoint has been updated to '/profile/<user_id>/tokens'
+        //  so it does not conflict with the info endpoint.)
+        axios.get(`/profile/${userId}/tokens`)
+          .then(response => {
+            const tokens = response.data;
+            const tokenList = document.querySelector("#profile-tokens ul");
+            tokenList.innerHTML = ""; // Clear any existing list items.
+            tokens.forEach(tk => {
+              const li = document.createElement("li");
+              li.textContent = `${tk.Symbol}: ${tk.balance}`;
+              tokenList.appendChild(li);
+            });
+          })
+          .catch(error => {
+            console.error("Error fetching token balances:", error);
+            document.getElementById("profile-tokens").innerHTML = "<p>Error loading token balances</p>";
+          });
+
+        // --- Set Wallet QR Code ---
+        // The backend will generate and return a QR code image for the user's wallet.
+        document.getElementById("wallet-qr").src = `/profile/${userId}/qr`;
       }
 
       function hideProfileModal() {
