@@ -147,8 +147,9 @@ def gamedev_signup():
 @app.route("/gamedev/login", methods=["POST"])
 def gamedev_login():
     data = request.json
-    email = data["loginEmail"]
-    password = data["loginPassword"]
+    print(data)
+    email = data["email"]
+    password = data["password"]
     utils.token_gen.update_config()
     gamedev = utils.login_gamedev(email, password)
 
@@ -280,15 +281,65 @@ def create_game():
     return redirect(url_for("dash"))  # Redirect to the dashboard page
 
 
-@app.route("/")
-def home():
+@app.route("/signup", methods=["POST"])
+def signup():
+    data = request.json
+    email = data["email"]
+    basename = data["basename"]
+    password = data["password"]  # Plain password for encryption
+
+    # Generate Ethereum Wallet
+    account = web3.eth.account.create()
+    wallet_address = account.address
+    private_key = account.key.hex()  # Store securely in production!
+
+    utils.token_gen.update_config()
+    # Store encrypted user data across nodes
+    success = utils.upload_user(email, basename, password, wallet_address, private_key)
+
+    if not success:
+        return jsonify({"error": "Failed to create user"}), 500
+
+    return (
+        jsonify(
+            {"message": "User created successfully", "wallet_address": wallet_address}
+        ),
+        201,
+    )
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    email = data["email"]
+    password = data["password"]  # Plain password for comparison
+
+    utils.token_gen.update_config()
+    user = utils.login_user(email, password)
+
+    if not user:
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    return (
+        jsonify({"message": "Login successful", "uuid": user.get("uuid", "N/A")}),
+        200,
+    )
+
+
+@app.route("/Gamedev")
+def gamedev_home():
     return render_template("index.html")
 
 
-@app.route("/dashboard")
+@app.route("/")
+def home():
+    return render_template("user_index.html")
+
+
+@app.route("/Gamedev/Dashboard")
 def dash():
     return render_template("dashboard.html")
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
