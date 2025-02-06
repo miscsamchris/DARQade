@@ -1066,6 +1066,7 @@ def upload_game(
                 "reward_in_tokens": reward_in_tokens,
                 "game_type": card_type,
                 "revenue": 0,
+                "status": "Created",
                 "game_developer": developer_id,
             }
             if not nildb_api.data_upload(
@@ -1100,6 +1101,7 @@ def fetch_games() -> List[Dict]:
                         "cost_in_eth": game["cost_in_eth"],
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
+                        "status": game["status"],
                         "revenue": game["revenue"],
                         "game_developer": game["game_developer"],
                     }
@@ -1111,10 +1113,10 @@ def fetch_games() -> List[Dict]:
         return []
 
 
-def get_game(title: str) -> Dict:
+def get_game(uid: str) -> Dict:
     """Fetch a specific game based on its title."""
     try:
-        filter_dict = {"title": title}
+        filter_dict = {"_id": uid}
 
         games = {}
         for node_name in ["node_a", "node_b", "node_c"]:
@@ -1134,6 +1136,7 @@ def get_game(title: str) -> Dict:
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
                         "revenue": game["revenue"],
+                        "status": game["status"],
                         "game_developer": game["game_developer"],
                     }
 
@@ -1164,12 +1167,14 @@ def get_games_by_gamedev(gamedev_id: str) -> Dict:
                 game_id = game["_id"]
                 if game_id not in games:
                     games[game_id] = {
+                        "uid": game_id,
                         "title": game["title"],
                         "description": game["description"],
                         "prompt": game["prompt"],
                         "cost_in_eth": game["cost_in_eth"],
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
+                        "status": game["status"],
                         "revenue": game["revenue"],
                         "game_developer": game["game_developer"],
                     }

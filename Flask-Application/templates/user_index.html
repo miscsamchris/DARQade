@@ -1,73 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DARQade - Game Themed Signup & Login</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
-        body {
-            font-family: 'Press Start 2P', cursive;
-            background: url('{{ url_for('static', filename='background-image.jpg') }}') no-repeat center center;
-            background-size: cover;
-        }
-
-        .glass {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
-        }
-
-        input {
-            font-family: Arial, sans-serif;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DARQade – Where Gamers Earn!</title>
+  <link rel="icon" type="image/x-icon" href='{{ url_for("static", filename="images/favicon.ico") }}'>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
+    :root { scroll-behavior: smooth; }
+    body, html { margin: 0; padding: 0; height: 100%; }
+    .game-font { font-family: 'Press Start 2P', cursive; }
+    .future-font { font-family: 'Orbitron', sans-serif; }
+    .full-screen-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+    .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); }
+    .glass { background: rgba(26, 26, 46, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(79,70,229,0.3); }
+    .neon-text { text-shadow: 0 0 10px rgba(79,70,229,0.7), 0 0 20px rgba(79,70,229,0.5); }
+    .parallax { background-attachment: fixed; background-position: center; background-repeat: no-repeat; background-size: cover; }
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar { width: 10px; }
+    ::-webkit-scrollbar-track { background: #16213e; }
+    ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+    /* Modal tab styles */
+    .tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .tab-active { background-color: rgba(255, 255, 255, 0.2); }
+  </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-5">
-    <div class="glass w-full max-w-md p-6 text-white">
-        <h1 class="text-center text-2xl mb-5">Welcome to DARQade</h1>
-
-        <div id="form-container">
-            <h2 class="text-lg text-center mb-3">Sign Up</h2>
-            <input id="signup-email" type="email" placeholder="Email" class="w-full p-2 mb-2 border rounded text-black">
-            <input id="signup-basename" type="text" placeholder="Username" class="w-full p-2 mb-2 border rounded text-black">
-            <input id="signup-password" type="password" placeholder="Password" class="w-full p-2 mb-2 border rounded text-black">
-            <button onclick="handleRequest('{{ url_for('signup') }}')" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Sign Up</button>
-
-            <hr class="my-5 border-gray-500">
-
-            <h2 class="text-lg text-center mb-3">Login</h2>
-            <input id="login-email" type="email" placeholder="Email" class="w-full p-2 mb-2 border rounded text-black">
-            <input id="login-password" type="password" placeholder="Password" class="w-full p-2 mb-2 border rounded text-black">
-            <button onclick="handleRequest('{{ url_for('login') }}')" class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Login</button>
-
-            <p id="message" class="mt-3 text-center text-red-400"></p>
-        </div>
+<body class="bg-black text-white">
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-md">
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+      <a href="#home" class="game-font text-2xl text-indigo-400 hover:text-indigo-300 transition-colors">
+        DARQade
+      </a>
+      <!-- Mobile Menu Toggle Button -->
+      <button id="mobile-menu-toggle" class="md:hidden text-white text-2xl focus:outline-none">
+        <i class="ri-menu-line"></i>
+      </button>
+      <!-- Navigation Links -->
+      <div id="nav-menu" class="hidden md:flex space-x-6 future-font items-center">
+        <a href="#home" class="hover:text-indigo-400 transition-colors">Home</a>
+        <a href="#features" class="hover:text-indigo-400 transition-colors">Features</a>
+        <a href="#about" class="hover:text-indigo-400 transition-colors">About</a>
+        <a href="#faqs" class="hover:text-indigo-400 transition-colors">FAQs</a>
+        <a href="#contact" class="hover:text-indigo-400 transition-colors">Contact</a>
+        <button onclick="showAuthModal()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors">
+          Join Now
+        </button>
+      </div>
     </div>
+    <!-- Mobile Dropdown Menu -->
+    <div id="mobile-menu" class="md:hidden hidden bg-black/90 absolute top-full left-0 right-0">
+      <div class="flex flex-col space-y-4 p-6 future-font">
+        <a href="#home" class="hover:text-indigo-400 transition-colors">Home</a>
+        <a href="#features" class="hover:text-indigo-400 transition-colors">Features</a>
+        <a href="#about" class="hover:text-indigo-400 transition-colors">About</a>
+        <a href="#faqs" class="hover:text-indigo-400 transition-colors">FAQs</a>
+        <a href="#contact" class="hover:text-indigo-400 transition-colors">Contact</a>
+        <button onclick="showAuthModal()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors">
+          Join Now
+        </button>
+      </div>
+    </div>
+  </nav>
 
-    <script>
-        async function handleRequest(endpoint) {
-            const email = document.querySelector(endpoint.includes('signup') ? '#signup-email' : '#login-email').value;
-            const password = document.querySelector(endpoint.includes('signup') ? '#signup-password' : '#login-password').value;
-            const basename = document.querySelector('#signup-basename')?.value;
-            
-            const data = { email, password };
-            if (basename) data.basename = basename;
-            
-            const response = await fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-            
-            const result = await response.json();
-            document.getElementById('message').textContent = result.message || result.error;
-        }
-    </script>
+  <!-- Home Section -->
+  <section id="home" class="full-screen-section parallax"
+  style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('{{ url_for('static', filename='images/landing.webp') }}');">
+  <div class="container mx-auto px-6 text-center">
+    <h1 class="text-6xl game-font mb-6 neon-text text-white">DARQade</h1>
+    <p class="text-2xl future-font max-w-3xl mx-auto mb-12 text-gray-300">
+      🎮 Welcome to DARQade – Where Gaming Meets DeFi! 🚀<br>
+      Step into a next-gen arcade powered by AI. Win games, earn unique memecoins, and own your play.
+    </p>
+    <div class="space-x-4">
+      <button onclick="showAuthModal()" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded-lg future-font transition-colors">
+        Join Now
+      </button>
+      <a href="#features" class="bg-transparent border-2 border-indigo-600 hover:bg-indigo-600/20 px-8 py-3 rounded-lg future-font transition-colors inline-block">
+        Discover More
+      </a>
+    </div>
+  </div>
+</section>
+
+  <!-- Features, About, FAQs, and Contact Sections -->
+  <!-- (These sections remain unchanged from your previous design) -->
+
+  <section id="features" class="full-screen-section py-24" style="background-color: #0f172a;">
+    <div class="container mx-auto px-6">
+      <h2 class="text-5xl future-font text-center mb-20 text-indigo-400">What Makes DARQade Different?</h2>
+      <div class="grid md:grid-cols-2 gap-8">
+        <div class="glass p-8 rounded-xl text-center">
+          <i class="ri-gamepad-line text-6xl text-indigo-400 mb-6 block"></i>
+          <h3 class="text-2xl future-font mb-4 text-indigo-400">Play-to-Earn</h3>
+          <p class="text-gray-300 text-lg">Show off your skills and earn unique memecoins as you win every game!</p>
+        </div>
+        <div class="glass p-8 rounded-xl text-center">
+          <i class="ri-coins-line text-6xl text-indigo-400 mb-6 block"></i>
+          <h3 class="text-2xl future-font mb-4 text-indigo-400">Meme Coins with Real Utility</h3>
+          <p class="text-gray-300 text-lg">Collect, trade, and use game-specific coins across the DARQade ecosystem.</p>
+        </div>
+        <div class="glass p-8 rounded-xl text-center">
+          <i class="ri-robot-line text-6xl text-indigo-400 mb-6 block"></i>
+          <h3 class="text-2xl future-font mb-4 text-indigo-400">AI-Powered Games</h3>
+          <p class="text-gray-300 text-lg">Experience dynamic, prompt-driven games that evolve with every play.</p>
+        </div>
+        <div class="glass p-8 rounded-xl text-center">
+          <i class="ri-group-line text-6xl text-indigo-400 mb-6 block"></i>
+          <h3 class="text-2xl future-font mb-4 text-indigo-400">Community Tournaments</h3>
+          <p class="text-gray-300 text-lg">Compete in epic tournaments and rise through the ranks of our global community.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="full-screen-section gradient-bg py-24">
+    <div class="container mx-auto px-6">
+      <h2 class="text-4xl future-font text-center mb-20 text-indigo-400">About DARQade</h2>
+      <div class="max-w-6xl mx-auto">
+        <p class="text-2xl future-font text-gray-300 mb-20 text-center leading-relaxed">
+          DARQade isn’t just another gaming platform – it’s a revolution. We blend AI, blockchain, and the pure thrill of gaming to create an ecosystem where every play is rewarding. Whether you’re a casual gamer or a competitive enthusiast, DARQade transforms your skills into real-world rewards.
+        </p>
+        <div class="grid md:grid-cols-3 gap-12">
+          <div class="glass p-10 rounded-xl">
+            <h3 class="text-2xl future-font text-indigo-400 mb-6">Our Mission</h3>
+            <p class="text-lg text-gray-300 leading-relaxed">
+              To empower gamers by transforming play into profit, delivering innovative and evolving experiences that reward your passion.
+            </p>
+          </div>
+          <div class="glass p-10 rounded-xl">
+            <h3 class="text-2xl future-font text-indigo-400 mb-6">Our Vision</h3>
+            <p class="text-lg text-gray-300 leading-relaxed">
+              To redefine the gaming landscape where every victory, challenge, and community connection creates real-world value.
+            </p>
+          </div>
+          <div class="glass p-10 rounded-xl">
+            <h3 class="text-2xl future-font text-indigo-400 mb-6">Our Community</h3>
+            <p class="text-lg text-gray-300 leading-relaxed">
+              A vibrant, global network of gamers united by the thrill of competition, innovation, and earning rewards as you play.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faqs" class="full-screen-section py-24" style="background-color: #0f172a;">
+    <div class="container mx-auto px-6">
+      <h2 class="text-4xl future-font text-center mb-20 text-indigo-400">Frequently Asked Questions</h2>
+      <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">What is DARQade?</h3>
+          <p class="text-gray-300 text-lg">
+            DARQade is an AI-powered GameFi platform where every game you play earns you real rewards in the form of unique memecoins.
+          </p>
+        </div>
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">How do I earn rewards?</h3>
+          <p class="text-gray-300 text-lg">
+            Simply play the games, compete in tournaments, and climb the leaderboards to earn coins that have real utility across the platform.
+          </p>
+        </div>
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">Do I need crypto experience?</h3>
+          <p class="text-gray-300 text-lg">
+            Not at all! DARQade is designed for gamers of all backgrounds. Our platform makes earning crypto rewards as fun and simple as playing your favorite game.
+          </p>
+        </div>
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">What kind of games can I play?</h3>
+          <p class="text-gray-300 text-lg">
+            From fast-paced arcade challenges to evolving AI-powered adventures, our diverse game lineup is built to keep every session fresh and exciting.
+          </p>
+        </div>
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">Can I use my rewards in other games?</h3>
+          <p class="text-gray-300 text-lg">
+            Yes! Each game’s memecoin can be traded, collected, and even used in other parts of the platform to enhance your experience.
+          </p>
+        </div>
+        <div class="glass p-8 rounded-xl">
+          <h3 class="text-2xl future-font text-indigo-400 mb-4">How do tournaments work?</h3>
+          <p class="text-gray-300 text-lg">
+            Join our regular, community-driven tournaments to compete for exclusive rewards and a spot on the leaderboards.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact" class="full-screen-section gradient-bg py-24">
+    <div class="container mx-auto px-6">
+      <h2 class="text-4xl future-font text-center mb-20 text-indigo-400">Contact Us</h2>
+      <div class="max-w-2xl mx-auto glass p-12 rounded-xl">
+        <form class="space-y-8">
+          <div>
+            <label for="name" class="block future-font text-sm text-gray-300 mb-2">Full Name</label>
+            <input type="text" placeholder="Enter your full name" class="w-full px-5 py-4 bg-gray-800 rounded-lg future-font text-white text-lg" required>
+          </div>
+          <div>
+            <label for="email" class="block future-font text-sm text-gray-300 mb-2">Email Address</label>
+            <input type="email" placeholder="Enter your email" class="w-full px-5 py-4 bg-gray-800 rounded-lg future-font text-white text-lg" required>
+          </div>
+          <div>
+            <label for="phone" class="block future-font text-sm text-gray-300 mb-2">Phone Number (Optional)</label>
+            <input type="tel" placeholder="Enter your phone number" class="w-full px-5 py-4 bg-gray-800 rounded-lg future-font text-white text-lg">
+          </div>
+          <div>
+            <label for="message" class="block future-font text-sm text-gray-300 mb-2">Your Message</label>
+            <textarea placeholder="Write your message here" rows="6" class="w-full px-5 py-4 bg-gray-800 rounded-lg future-font text-white text-lg" required></textarea>
+          </div>
+          <button class="w-full bg-indigo-600 hover:bg-indigo-700 py-4 rounded-lg future-font text-xl transition-colors">
+            Send Message
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer class="bg-black/30 py-6">
+    <div class="container mx-auto px-6 text-center">
+      <p class="future-font text-gray-400">&copy; 2024 DARQade. All Rights Reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Authentication Modal with Tabs -->
+<!-- Authentication Modal with Tabs (Fixed Size, Larger, and Footer Button Fixed at Bottom) -->
+<div id="auth-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
+    <!-- Modal Container (Fixed size and larger) -->
+    <div class="glass relative rounded-xl border border-indigo-600/30 p-6 w-11/12 max-w-2xl min-h-[500px] flex flex-col">
+      <!-- Close Button -->
+      <button onclick="hideAuthModal()" class="absolute top-2 right-2 text-white text-2xl focus:outline-none">
+        <i class="ri-close-line"></i>
+      </button>
+      <!-- Tab Buttons -->
+      <div class="flex mb-4">
+        <button id="tab-signup" class="tab-btn tab-active rounded-l px-4 py-2" onclick="switchTab('signup')">
+          Sign Up
+        </button>
+        <button id="tab-login" class="tab-btn rounded-r px-4 py-2" onclick="switchTab('login')">
+          Login
+        </button>
+      </div>
+      <!-- Content Area (Scrollable if needed) -->
+      <div class="flex-grow overflow-y-auto">
+        <!-- Sign Up Form Content -->
+        <div id="signup-tab" class="tab-content">
+          <input id="signup-email" type="email" placeholder="Email" class="w-full p-2 mb-2 border rounded text-black">
+          <input id="signup-basename" type="text" placeholder="BaseName" class="w-full p-2 mb-2 border rounded text-black">
+          <input id="signup-password" type="password" placeholder="Password" class="w-full p-2 mb-2 border rounded text-black">
+        </div>
+        <!-- Login Form Content -->
+        <div id="login-tab" class="tab-content hidden">
+          <input id="login-email" type="email" placeholder="Email" class="w-full p-2 mb-2 border rounded text-black">
+          <input id="login-password" type="password" placeholder="Password" class="w-full p-2 mb-2 border rounded text-black">
+        </div>
+      </div>
+      <!-- Footer: Fixed Button at the Bottom -->
+      <div class="mt-4">
+        <button id="auth-action-button"
+                onclick="handleRequest('{{ url_for('signup') }}')"
+                class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+          Sign Up
+        </button>
+      </div>
+      <!-- Message Display -->
+      <p id="message" class="mt-3 text-center text-red-400"></p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Mobile Menu Toggle
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+    mobileMenuToggle.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+      mobileMenuToggle.innerHTML = mobileMenu.classList.contains('hidden')
+        ? '<i class="ri-menu-line"></i>'
+        : '<i class="ri-close-line"></i>';
+    });
+    // Close mobile menu when a link is clicked
+    document.querySelectorAll('#mobile-menu a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        mobileMenuToggle.innerHTML = '<i class="ri-menu-line"></i>';
+      });
+    });
+// Show/Hide Authentication Modal
+function showAuthModal() {
+    document.getElementById('auth-modal').classList.remove('hidden');
+  }
+  function hideAuthModal() {
+    document.getElementById('auth-modal').classList.add('hidden');
+  }
+  
+  // Tab Switching Functionality with Dynamic Button Update
+  function switchTab(tab) {
+    const signupTab = document.getElementById('signup-tab');
+    const loginTab = document.getElementById('login-tab');
+    const signupBtn = document.getElementById('tab-signup');
+    const loginBtn = document.getElementById('tab-login');
+    const actionButton = document.getElementById('auth-action-button');
+    
+    if (tab === 'signup') {
+      signupTab.classList.remove('hidden');
+      loginTab.classList.add('hidden');
+      signupBtn.classList.add('tab-active');
+      loginBtn.classList.remove('tab-active');
+      actionButton.innerText = "Sign Up";
+      actionButton.setAttribute("onclick", "handleRequest('{{ url_for('signup') }}')");
+      actionButton.classList.remove("bg-green-500", "hover:bg-green-700");
+      actionButton.classList.add("bg-blue-500", "hover:bg-blue-700");
+    } else {
+      signupTab.classList.add('hidden');
+      loginTab.classList.remove('hidden');
+      signupBtn.classList.remove('tab-active');
+      loginBtn.classList.add('tab-active');
+      actionButton.innerText = "Login";
+      actionButton.setAttribute("onclick", "handleRequest('{{ url_for('login') }}')");
+      actionButton.classList.remove("bg-blue-500", "hover:bg-blue-700");
+      actionButton.classList.add("bg-green-500", "hover:bg-green-700");
+    }
+  }
+  
+  // Handle sign-up and login requests
+  async function handleRequest(endpoint) {
+    const isSignup = endpoint.includes('signup');
+    const email = document.querySelector(isSignup ? '#signup-email' : '#login-email').value;
+    const password = document.querySelector(isSignup ? '#signup-password' : '#login-password').value;
+    const basename = document.querySelector('#signup-basename')?.value;
+    
+    const data = { email, password };
+    if (basename) data.basename = basename;
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      document.getElementById('message').textContent = result.message || result.error;
+    } catch (error) {
+      document.getElementById('message').textContent = "An error occurred. Please try again.";
+    }
+  }
+  
+  
+  </script>
 </body>
 </html>
-    

@@ -79,6 +79,18 @@ contract_interface = compiled_sol[next(iter(compiled_sol))]
 
 app = Flask(__name__)
 
+# Import necessary classes from your LangChain/CDP Agentkit setup.
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+
+from cdp_langchain.agent_toolkits import CdpToolkit
+from cdp_langchain.utils import CdpAgentkitWrapper
+
+# Global dictionary to store conversation sessions.
+game_test_sessions = {}
+
 
 @app.route("/gamedev/signup", methods=["POST"])
 def gamedev_signup():
@@ -339,6 +351,147 @@ def home():
 @app.route("/Gamedev/Dashboard")
 def dash():
     return render_template("dashboard.html")
+
+
+def initialize_agent():
+    """
+    Initialize the agent with CDP Agentkit.
+    Returns:
+        agent_executor: The ReAct agent instance.
+        config: A configuration dictionary.
+    """
+    # Initialize the LLM.
+    llm = ChatOpenAI(model="gpt-4o")
+    wallet_data_file = "wallet_data.txt"
+    wallet_data = None
+    if os.path.exists(wallet_data_file):
+        with open(wallet_data_file) as f:
+            wallet_data = f.read()
+
+    # Configure the CDP Agentkit.
+    values = {}
+    if wallet_data is not None:
+        values = {"cdp_wallet_data": wallet_data}
+
+    agentkit = CdpAgentkitWrapper(**values)
+
+    # Persist the agent's wallet data.
+    wallet_data = agentkit.export_wallet()
+    with open(wallet_data_file, "w") as f:
+        f.write(wallet_data)
+
+    # Initialize the CDP toolkit and select tools.
+    cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
+    tools = cdp_toolkit.get_tools()
+    all_tools = []
+    for tool in tools:
+        # For this example we only add the "deploy_token" tool.
+        if tool.name == "deploy_token":
+            all_tools.append(tool)
+
+    # Set up an in-memory buffer for conversation history.
+    memory = MemorySaver()
+    config = {"configurable": {"thread_id": "CDP Agentkit Chatbot Example!"}}
+
+    # Create the ReAct agent using the LLM, tools, and memory.
+    agent_executor = create_react_agent(
+        llm,
+        tools=all_tools,
+        checkpointer=memory,
+        state_modifier=(
+            "You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. "
+            "You are empowered to interact onchain using your tools. If you ever need funds, you can request "
+            "them from the faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet "
+            "details and request funds from the user. Before executing your first action, get the wallet details "
+            "to see what network you're on. If there is a 5XX (internal) HTTP error code, ask the user to try "
+            "again later. If someone asks you to do something you can't do with your currently available tools, "
+            "you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, "
+            "recommending they go to docs.cdp.coinbase.com for more information. Be concise and helpful with your "
+            "responses. Refrain from restating your tools' descriptions unless it is explicitly requested."
+        ),
+    )
+    return agent_executor, config
+
+
+@app.route("/start_game_test", methods=["POST"])
+def start_game_test():
+    """
+    Starts a new game test session.
+    Expects JSON input with a "prompt" key containing the initial prompt.
+    Returns a unique session_id along with the agent’s first response.
+    """
+    data = request.json
+    game_id = data.get("game_id", "")
+
+    utils.token_gen.update_config()
+    game = utils.get_game(game_id)
+    print(game)
+    if game == {}:
+        return jsonify({"error": "Game not found."}), 404
+    prompt = game.get("prompt")
+    # Initialize a new agent instance.
+    agent_executor, config = initialize_agent()
+
+    # Prime the conversation with the initial prompt.
+    initial_response = ""
+    for chunk in agent_executor.stream(
+        {"messages": [HumanMessage(content=prompt)]}, config
+    ):
+        if "agent" in chunk:
+            # Capture the agent's response (the last such chunk will be used).
+            initial_response = chunk["agent"]["messages"][0].content
+
+    # Generate a unique session ID and store the agent instance and config.
+    session_id = str(uuid.uuid4())
+    game_test_sessions[session_id] = (agent_executor, config)
+
+    return (
+        jsonify(
+            {
+                "session_id": session_id,
+                "message": "Game test session started.",
+                "initial_response": initial_response,
+            }
+        ),
+        201,
+    )
+
+
+@app.route("/chat/<session_id>", methods=["POST"])
+def chat(session_id):
+    """
+    Accepts a user message for the given session and returns the agent's response.
+    Expects JSON input with a "message" key.
+    """
+    data = request.json
+    user_input = data.get("message", "")
+
+    if session_id not in game_test_sessions:
+        return jsonify({"error": "Session not found."}), 404
+
+    agent_executor, config = game_test_sessions[session_id]
+
+    # Send the user's message to the agent and collect the response.
+    response_text = ""
+    for chunk in agent_executor.stream(
+        {"messages": [HumanMessage(content=user_input)]}, config
+    ):
+        if "agent" in chunk:
+            response_text = chunk["agent"]["messages"][0].content
+
+    return jsonify({"response": response_text})
+
+
+@app.route("/end_game_test/<session_id>", methods=["POST"])
+def end_game_test(session_id):
+    """
+    Ends the game test session identified by the session_id.
+    """
+    if session_id in game_test_sessions:
+        del game_test_sessions[session_id]
+        return jsonify({"message": "Game test session ended."})
+    else:
+        return jsonify({"error": "Session not found."}), 404
 
 
 if __name__ == "__main__":
