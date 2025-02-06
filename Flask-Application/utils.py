@@ -86,8 +86,12 @@ class NilDBAPI:
                 "Accept": "application/json",
             }
 
-            body = {"schema": schema_id, "filter": filter_dict, "update": update_dict}
-
+            body = {
+                "schema": schema_id,
+                "filter": filter_dict,
+                "update": {"$set": update_dict},
+            }
+            print(body)
             response = requests.post(
                 f"{node['url']}/api/v1/data/update", headers=headers, json=body
             )
@@ -102,6 +106,34 @@ class NilDBAPI:
 
         except Exception as e:
             print(f"Error updating data in {node_name}: {str(traceback.format_exc())}")
+            return False
+
+    def data_delete(self, node_name: str, schema_id: str, filter_dict: dict) -> bool:
+        """Update records in the specified node and schema."""
+        try:
+            node = self.nodes[node_name]
+            headers = {
+                "Authorization": f'Bearer {node["jwt"]}',
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+
+            body = {"schema": schema_id, "filter": filter_dict}
+
+            response = requests.post(
+                f"{node['url']}/api/v1/data/delete", headers=headers, json=body
+            )
+
+            if response.status_code == 200:
+                return response.json().get("data", {}).get("errors", []) == []
+            else:
+                print(
+                    f"Failed to Delete data in {node_name}: {response.status_code} {response.text}"
+                )
+                return False
+
+        except Exception as e:
+            print(f"Error Delete data in {node_name}: {str(traceback.format_exc())}")
             return False
 
     def data_read(
@@ -456,6 +488,7 @@ def login_user(email: str, password: str) -> Dict:
                 user_id = user["_id"]
                 if user_id not in users:
                     users[user_id] = {
+                        "user_id": user_id,
                         "email": user["email"],
                         "basename": user["basename"],
                         "wallet_address": user["wallet_address"],
@@ -495,6 +528,7 @@ def login_user(email: str, password: str) -> Dict:
         # Return user details upon successful retrieval
         else:
             return {
+                "uuid": user_data["user_id"],
                 "Email": user_data["email"],
                 "Basename": user_data["basename"],
                 "Wallet Address": user_data["wallet_address"],
@@ -507,41 +541,69 @@ def login_user(email: str, password: str) -> Dict:
         return {}
 
 
-# def test_user_methods():
-#     """Driver function to test user upload, fetch, and login."""
-#     print("\n=== Testing User Methods ===")
+def get_user_by_id(_id: str) -> Dict:
+    """Authenticate user based on email filter and decrypt stored credentials."""
+    try:
+        # Define the filter criteria
+        filter_dict = {"_id": _id}
 
-#     # Sample user data
-#     email = "testuser@example.com"
-#     basename = "TestUser"
-#     password = "SecurePass123"
-#     wallet_address = "0x1234567890abcdef1234567890abcdef12345678"
-#     private_key = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+        # Fetch from all nodes using the filter
+        users = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_users = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["User"], filter_dict
+            )
+            print("Filtered Users:", node_users)
 
-#     print("\n[1] Uploading user...")
-#     token_gen.update_config()
-#     upload_success = upload_user(email, basename, password, wallet_address, private_key)
-#     print(f"User Upload Success: {upload_success}")
+            for user in node_users:
+                user_id = user["_id"]
+                if user_id not in users:
+                    users[user_id] = {
+                        "email": user["email"],
+                        "basename": user["basename"],
+                        "wallet_address": user["wallet_address"],
+                        "password_shares": [],
+                        "private_key_shares": [],
+                    }
+                users[user_id]["password_shares"].append(user["password"])
+                users[user_id]["private_key_shares"].append(user["private_key"])
 
-#     if not upload_success:
-#         print("Upload failed, stopping test.")
-#         return
-#     token_gen.update_config()
-#     print("\n[2] Fetching all users...")
-#     all_users = fetch_users()
-#     print(f"Fetched Users: {all_users}")
-#     token_gen.update_config()
-#     print("\n[3] Logging in user...")
-#     user_data = login_user(email,password)
+        # Validate user data
+        if not users:
+            print("User not found.")
+            return {}
 
-#     if user_data:
-#         print("Login Successful! Retrieved User Data:")
-#         print(user_data)
-#     else:
-#         print("Login Failed.")
+        # Since email is unique, there should be only one match
+        user_id, user_data = next(iter(users.items()))
 
-# # Run the test function
-# test_user_methods()
+        # Ensure all password shares are retrieved before decryption
+        if len(user_data["password_shares"]) == NUM_NODES:
+            decrypted_password = encryption.decrypt_password(
+                user_data["password_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt password.")
+            return {}
+
+        # Ensure all private key shares are retrieved before decryption
+        if len(user_data["private_key_shares"]) == NUM_NODES:
+            decrypted_private_key = encryption.decrypt_password(
+                user_data["private_key_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt private key.")
+            return {}
+        return {
+            "Email": user_data["email"],
+            "Basename": user_data["basename"],
+            "Wallet Address": user_data["wallet_address"],
+            "Password": decrypted_password,
+            "Private Key": decrypted_private_key,
+        }
+
+    except Exception as e:
+        print(f"Error during login: {str(traceback.format_exc())}")
+        return {}
 
 
 def upload_token(
@@ -566,6 +628,7 @@ def upload_token(
                 "symbol": symbol,
                 "decimals": decimals,
                 "total_supply": total_supply,
+                "balance": total_supply,
                 "contract_address": contract_address,
                 "creator": creator,
             }
@@ -599,6 +662,7 @@ def fetch_tokens() -> List[Dict]:
                         "symbol": token["symbol"],
                         "decimals": token["decimals"],
                         "total_supply": token["total_supply"],
+                        "balance": token["balance"],
                         "contract_address": token["contract_address"],
                         "creator": token["creator"],
                     }
@@ -630,6 +694,7 @@ def get_token(symbol: str) -> Dict:
                         "symbol": token["symbol"],
                         "decimals": token["decimals"],
                         "total_supply": token["total_supply"],
+                        "balance": token["balance"],
                         "contract_address": token["contract_address"],
                         "creator": token["creator"],
                     }
@@ -665,6 +730,7 @@ def get_token_by_gamedev_wallet(wallet: str) -> Dict:
                         "symbol": token["symbol"],
                         "decimals": token["decimals"],
                         "total_supply": token["total_supply"],
+                        "balance": token["balance"],
                         "contract_address": token["contract_address"],
                         "creator": token["creator"],
                     }
@@ -678,43 +744,6 @@ def get_token_by_gamedev_wallet(wallet: str) -> Dict:
     except Exception as e:
         print(f"Error retrieving token: {str(e)}")
         return {}
-
-
-# def test_token_methods():
-#     """Driver function to test token upload, fetch, and filter search."""
-#     print("\n=== Testing Token Methods ===")
-
-#     # Sample token data
-#     name = "TestToken"
-#     symbol = "TTK"
-#     decimals = 18
-#     total_supply = "1000000000"
-#     contract_address = "0xabcdef1234567890abcdef1234567890abcdef12"
-#     creator = "0x1234567890abcdef1234567890abcdef12345678"
-
-#     print("\n[1] Uploading token...")
-#     upload_success = upload_token(name, symbol, decimals, total_supply, contract_address, creator)
-#     print(f"Token Upload Success: {upload_success}")
-
-#     if not upload_success:
-#         print("Upload failed, stopping test.")
-#         return
-
-#     print("\n[2] Fetching all tokens...")
-#     all_tokens = fetch_tokens()
-#     print(f"Fetched Tokens: {all_tokens}")
-
-#     print("\n[3] Fetching specific token by symbol...")
-#     token_data = get_token(symbol)
-
-#     if token_data:
-#         print("Token Found! Retrieved Data:")
-#         print(token_data)
-#     else:
-#         print("Token Not Found.")
-
-# # Run the test function
-# test_token_methods()
 
 
 def upload_gamedev(
@@ -1002,44 +1031,6 @@ def update_gamedev(
         return False
 
 
-# def test_gamedev_methods():
-#     """Driver function to test GameDev upload, fetch, and login."""
-#     print("\n=== Testing GameDev Methods ===")
-
-#     # Sample GameDev data
-#     email = "dev@example.com"
-#     company_name = "DevStudio"
-#     password = "StrongPass123"
-#     website = "https://devstudio.com"
-#     description = "A game development studio"
-#     wallet_address = "0xabcdef1234567890abcdef1234567890abcdef12"
-#     private_key = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-
-#     print("\n[1] Uploading GameDev account...")
-#     upload_success = upload_gamedev(email, company_name, password, website, description, wallet_address, private_key)
-#     print(f"GameDev Upload Success: {upload_success}")
-
-#     if not upload_success:
-#         print("Upload failed, stopping test.")
-#         return
-
-#     print("\n[2] Fetching all GameDevs...")
-#     all_gamedevs = fetch_gamedevs()
-#     print(f"Fetched GameDevs: {all_gamedevs}")
-
-#     print("\n[3] Logging in GameDev...")
-#     gamedev_data = login_gamedev(email)
-
-#     if gamedev_data:
-#         print("Login Successful! Retrieved GameDev Data:")
-#         print(gamedev_data)
-#     else:
-#         print("Login Failed.")
-
-# # Run the test function
-# test_gamedev_methods()
-
-
 def upload_game(
     title: str,
     description: str,
@@ -1048,6 +1039,7 @@ def upload_game(
     reward_in_tokens: float,
     card_type: int,
     developer_id: str,
+    imagePath: str,
 ) -> bool:
     """Create and store Game data across nodes."""
     try:
@@ -1065,7 +1057,9 @@ def upload_game(
                 "cost_in_eth": cost_in_eth,
                 "reward_in_tokens": reward_in_tokens,
                 "game_type": card_type,
+                "imagePath": imagePath,
                 "revenue": 0,
+                "players": 0,
                 "status": "Created",
                 "game_developer": developer_id,
             }
@@ -1078,6 +1072,52 @@ def upload_game(
         return success
     except Exception as e:
         print(f"Error creating game: {str(e)}")
+        return False
+
+
+def update_game(
+    game_id: str,
+    title: str,
+    description: str,
+    prompt: str,
+    cost_in_eth: float,
+    reward_in_tokens: float,
+    card_type: int,
+    revenue: str,
+    players: str,
+    imagePath: str,
+    status: str,
+) -> bool:
+    """Updating Game data across nodes."""
+    try:
+        filter_dict = {"_id": game_id}
+        # Store GameDev data across nodes
+        success = True
+        for i, node_name in enumerate(["node_a", "node_b", "node_c"]):
+            gamedev_data = {
+                "title": title,
+                "description": description,
+                "prompt": prompt,
+                "cost_in_eth": cost_in_eth,
+                "reward_in_tokens": reward_in_tokens,
+                "game_type": card_type,
+                "imagePath": imagePath,
+                "revenue": revenue,
+                "players": players,
+                "status": status,
+            }
+            if not nildb_api.data_update(
+                node_name,
+                schema_manager.schema_ids["Game"],
+                filter_dict,
+                gamedev_data,
+            ):
+                success = False
+                break
+
+        return success
+    except Exception as e:
+        print(f"Error Updating Game : {str(e)}")
         return False
 
 
@@ -1103,6 +1143,8 @@ def fetch_games() -> List[Dict]:
                         "game_type": game["game_type"],
                         "status": game["status"],
                         "revenue": game["revenue"],
+                        "players": game["players"],
+                        "imagePath": game["imagePath"],
                         "game_developer": game["game_developer"],
                     }
 
@@ -1137,6 +1179,8 @@ def get_game(uid: str) -> Dict:
                         "game_type": game["game_type"],
                         "revenue": game["revenue"],
                         "status": game["status"],
+                        "players": game["players"],
+                        "imagePath": game["imagePath"],
                         "game_developer": game["game_developer"],
                     }
 
@@ -1175,8 +1219,10 @@ def get_games_by_gamedev(gamedev_id: str) -> Dict:
                         "reward_in_tokens": game["reward_in_tokens"],
                         "game_type": game["game_type"],
                         "status": game["status"],
+                        "players": game["players"],
                         "revenue": game["revenue"],
                         "game_developer": game["game_developer"],
+                        "imagePath": game["imagePath"],
                     }
 
         if not games:
@@ -1190,48 +1236,42 @@ def get_games_by_gamedev(gamedev_id: str) -> Dict:
         return {}
 
 
-def initialize_agent(wallet_data=None):
-    """Initialize the agent with CDP Agentkit."""
-    # Initialize LLM.
-    llm = ChatOpenAI(model="gpt-4o")
+def get_games_by_status(status: str) -> Dict:
+    """Fetch a specific game based on its title."""
+    try:
+        filter_dict = {"status": status}
 
-    # Configure CDP Agentkit Langchain Extension.
-    values = {}
-    if wallet_data is not None:
-        # If there is a persisted agentic wallet, load it and pass to the CDP Agentkit Wrapper.
-        values = {"cdp_wallet_data": wallet_data}
+        games = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_games = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["Game"], filter_dict
+            )
+            print("Filtered Games:", node_games)
 
-    agentkit = CdpAgentkitWrapper(**values)
+            for game in node_games:
+                game_id = game["_id"]
+                if game_id not in games:
+                    games[game_id] = {
+                        "uid": game_id,
+                        "title": game["title"],
+                        "description": game["description"],
+                        "prompt": game["prompt"],
+                        "cost_in_eth": game["cost_in_eth"],
+                        "reward_in_tokens": game["reward_in_tokens"],
+                        "game_type": game["game_type"],
+                        "status": game["status"],
+                        "players": game["players"],
+                        "revenue": game["revenue"],
+                        "game_developer": game["game_developer"],
+                        "imagePath": game["imagePath"],
+                    }
 
-    # Initialize CDP Agentkit Toolkit and get tools.
-    cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
-    tools = cdp_toolkit.get_tools()
-    all_tools = []
-    for i in tools:
-        print(i)
-        if i.name == "deploy_token":
-            all_tools.append(i)
-    # Store buffered conversation history in memory.
-    memory = MemorySaver()
-    config = {"configurable": {"thread_id": "CDP Agentkit Chatbot Example!"}}
+        if not games:
+            print("Game not found.")
+            return {}
 
-    # Create ReAct Agent using the LLM and CDP Agentkit tools.
-    return (
-        create_react_agent(
-            llm,
-            tools=all_tools,
-            checkpointer=memory,
-            state_modifier=(
-                "You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. "
-                "You are empowered to interact onchain using your tools. If you ever need funds, you can request "
-                "them from the faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet "
-                "details and request funds from the user. Before executing your first action, get the wallet details "
-                "to see what network you're on. If there is a 5XX (internal) HTTP error code, ask the user to try "
-                "again later. If someone asks you to do something you can't do with your currently available tools, "
-                "you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, "
-                "recommend they go to docs.cdp.coinbase.com for more information. Be concise and helpful with your "
-                "responses. Refrain from restating your tools' descriptions unless it is explicitly requested."
-            ),
-        ),
-        config,
-    )
+        return {"games": list(games.values())}
+
+    except Exception as e:
+        print(f"Error retrieving game: {str(e)}")
+        return {}

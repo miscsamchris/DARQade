@@ -8,6 +8,9 @@ import math
 import datetime
 import dotenv, os
 import utils
+from werkzeug.utils import secure_filename
+import json
+from langchain.tools import Tool
 
 dotenv.load_dotenv()
 install_solc("0.8.0")
@@ -156,6 +159,200 @@ def gamedev_signup():
     )
 
 
+def get_wallet_from_uuid(myuuid):
+    # Fetch the user from the database
+    utils.token_gen.update_config()
+
+    user = utils.get_user_by_id(myuuid)
+    if not user:
+        return None, "User not found"
+
+    # Check if the user has a private key
+    if "Private Key" not in user:
+        return None, "Private key not found for user"
+
+    # Get the private key from the user object
+    private_key = user["Private Key"]
+
+    # Create a web3.eth.Account object using the private key
+    try:
+        account = Web3().eth.account.from_key(private_key)
+        return account, None
+    except Exception as e:
+        return None, f"Failed to create wallet: {str(e)}"
+
+
+########################################
+# 6. ETH Balance Tool
+########################################
+def eth_balance_tool(wallet_address: str) -> str:
+    """
+    Get the ETH balance of a given wallet.
+
+    Args:
+        wallet_address: The Ethereum wallet address.
+
+    Returns:
+        A JSON string with the wallet address and its ETH balance.
+    """
+    try:
+        balance_wei = web3.eth.get_balance(wallet_address)
+        balance_eth = web3.from_wei(balance_wei, "ether")
+        result = {"wallet_address": wallet_address, "eth_balance": float(balance_eth)}
+        return json.dumps(result)
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+eth_balance_tool_instance = Tool(
+    name="eth_balance",
+    func=eth_balance_tool,
+    description=(
+        "Retrieve the ETH balance of a wallet. "
+        "Input parameter: wallet_address (str)."
+    ),
+)
+
+
+########################################
+# 8. Pay Game Fee Tool
+########################################
+def pay_game_fee_tool(user_uuid: str, amount: float, recipient_wallet: str) -> str:
+    """
+    Pay a game fee by transferring ETH from a user's account to a specified recipient wallet.
+
+    Args:
+        user_uuid: The user's UUID.
+        amount: The amount of ETH to send (in ether).
+        recipient_wallet: The wallet address that will receive the game fee.
+
+    Returns:
+        A JSON string with a success message and the transaction hash.
+    """
+    # Retrieve the user's account details using their UUID.
+    # Assumes get_wallet_from_uuid is defined elsewhere and returns (account, message)
+    myacc, message = get_wallet_from_uuid(user_uuid)
+    if not myacc:
+        return json.dumps({"error": message})
+
+    # Convert the fee amount from ether to Wei.
+    value = web3.to_wei(amount, "ether")
+    gas_price = web3.eth.gas_price
+
+    # Build the transaction: the fee is sent to the provided recipient wallet.
+    transaction = {
+        "to": recipient_wallet,
+        "value": value,
+        "gas": 21000,
+        "gasPrice": gas_price,
+        "nonce": web3.eth.get_transaction_count(myacc.address),
+        "chainId": web3.eth.chain_id,
+    }
+
+    # Sign and send the transaction.
+    signed_txn = web3.eth.account.sign_transaction(transaction, myacc.key.hex())
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+
+    return json.dumps(
+        {"message": "Game fee paid", "transaction_hash": web3.to_hex(tx_hash)}
+    )
+
+
+pay_game_fee_tool_instance = Tool(
+    name="pay_game_fee",
+    func=pay_game_fee_tool,
+    description=(
+        "Pay a game fee by transferring ETH from a user's account to a specified wallet. "
+        "Input parameters: user_uuid (str), amount (float, in ether), recipient_wallet (str)."
+    ),
+)
+
+import json
+from langchain.tools import Tool
+
+
+def transfer_token_tool(
+    token_address: str, user_uuid: str, amount: float, gamedev_uuid: str
+) -> str:
+    """
+    Transfer tokens from a gamedev's wallet to another address.
+
+    Args:
+        token_address (str): The ERC20 token contract address.
+        user_uuid (str): The user id of the destination wallet address.
+        amount (float): The amount of tokens to transfer (in human-readable units).
+        gamedev_uuid (str): The gamedev user's UUID to look up their private key.
+
+    Returns:
+        A JSON string containing a success message and the transaction hash, or an error message.
+    """
+    # Retrieve the gamedev's details from the database
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_id(gamedev_uuid)
+    if not gamedev:
+        return json.dumps({"error": "Game developer not found"})
+
+    # Create an account instance from the private key
+    account = web3.eth.account.from_key(gamedev["Private Key"])
+    myacc, message = get_wallet_from_uuid(user_uuid)
+
+    # Minimal ERC20 ABI for transferring tokens and querying decimals
+    ERC20_ABI = [
+        {
+            "constant": False,
+            "inputs": [
+                {"name": "_to", "type": "address"},
+                {"name": "_value", "type": "uint256"},
+            ],
+            "name": "transfer",
+            "outputs": [{"name": "", "type": "bool"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "decimals",
+            "outputs": [{"name": "", "type": "uint8"}],
+            "type": "function",
+        },
+    ]
+
+    # Initialize the token contract
+    contract = web3.eth.contract(address=token_address, abi=ERC20_ABI)
+
+    # Retrieve decimals and convert the human-readable amount to the smallest unit
+    decimals = contract.functions.decimals().call()
+    value = int(amount * (10**decimals))
+
+    # Build the transaction
+    transaction = contract.functions.transfer(myacc.address, value).build_transaction(
+        {
+            "from": account.address,
+            "gas": 100000,
+            "gasPrice": web3.to_wei("1", "gwei"),
+            "nonce": web3.eth.get_transaction_count(account.address),
+        }
+    )
+
+    # Sign and send the transaction
+    signed_txn = web3.eth.account.sign_transaction(transaction, account.key.hex())
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+
+    return json.dumps(
+        {"message": "Transfer Successful", "transaction_hash": web3.to_hex(tx_hash)}
+    )
+
+
+transfer_token_tool_instance = Tool(
+    name="transfer_token",
+    func=transfer_token_tool,
+    description=(
+        "Transfer tokens from a gamedev's wallet to another address. "
+        "Input parameters: token_address (str), user_uuid (str), amount (float), gamedev_uuid (str)."
+    ),
+)
+
+
 @app.route("/gamedev/login", methods=["POST"])
 def gamedev_login():
     data = request.json
@@ -244,21 +441,21 @@ def create_token():
         str(account.address),
     )
 
-    # utils.token_gen.update_config()
-    # utils.update_gamedev(
-    #     myuuid,
-    #     private_key=gamedev["Private Key"],
-    #     company_name=gamedev["Company Name"],
-    #     email=gamedev["Email"],
-    #     website=gamedev["Website"],
-    #     description=gamedev["Description"],
-    #     wallet_address=gamedev["Wallet Address"],
-    #     token=contract_address,
-    #     password=gamedev["Password"],
-    #     total_revenue=gamedev["Total Revenue"],
-    #     active_status=gamedev["Active Status"],
-    #     verified=False,
-    # )
+    utils.token_gen.update_config()
+    utils.update_gamedev(
+        myuuid,
+        private_key=gamedev["Private Key"],
+        company_name=gamedev["Company Name"],
+        email=gamedev["Email"],
+        website=gamedev["Website"],
+        description=gamedev["Description"],
+        wallet_address=gamedev["Wallet Address"],
+        token=str(contract_address),
+        password=gamedev["Password"],
+        total_revenue=gamedev["Total Revenue"],
+        active_status=gamedev["Active Status"],
+        verified=False,
+    )
     return (
         jsonify({"message": "Token Created", "contract_address": contract_address}),
         201,
@@ -274,11 +471,36 @@ def get_games(uuid):
     return jsonify(games["games"]), 200
 
 
+@app.route("/arcade_games", methods=["GET"])
+def get_arcade_games():
+    utils.token_gen.update_config()
+    games = utils.get_games_by_status("Released")
+    if games == {}:
+        return jsonify({"error": "Game developer not found"}), 404
+    return jsonify(games["games"]), 200
+
+
 @app.route("/gamedev/create_game", methods=["POST"])
 def create_game():
     data = request.form  # Use request.form for form data
     print(data)
     myuuid = data.get("uuid")
+
+    # Get the file from the form (make sure the file input's name attribute is "Logo")
+    logo_file = request.files.get("Logo")
+    logo_filename = None
+    if logo_file:
+        # Secure the filename
+        logo_filename = secure_filename(logo_file.filename)
+        # Define the upload folder path (adjust the path if necessary)
+        upload_folder = os.path.join(app.root_path, "static", "upload", myuuid)
+        # Create the upload folder if it doesn't exist
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder)
+        # Save the file to the upload folder
+        logo_file.save(os.path.join(upload_folder, logo_filename))
+
+    # Optionally, you could pass the logo_filename to your upload_game function if needed.
     utils.token_gen.update_config()
     utils.upload_game(
         title=data.get("game_title"),
@@ -288,9 +510,45 @@ def create_game():
         reward_in_tokens=float(data.get("reward_in_tokens")),
         card_type=int(data.get("card_type", "prompt")),
         developer_id=myuuid,
+        imagePath=logo_filename,
     )
 
     return redirect(url_for("dash"))  # Redirect to the dashboard page
+
+
+@app.route("/release_game", methods=["POST"])
+def release_game():
+    data = request.json
+    status = data["status"]
+    game_id = data["game_id"]
+
+    utils.token_gen.update_config()
+    game = utils.get_game(game_id)
+    if game == {}:
+        return jsonify({"error": "Game not found."}), 404
+    utils.token_gen.update_config()
+    utils.update_game(
+        game_id,
+        game["title"],
+        game["description"],
+        game["prompt"],
+        game["cost_in_eth"],
+        game["reward_in_tokens"],
+        game["game_type"],
+        game["revenue"],
+        game["players"],
+        game["imagePath"],
+        status,
+    )
+    return (
+        jsonify(
+            {
+                "game_id": game_id,
+                "message": "Game Release.",
+            }
+        ),
+        201,
+    )
 
 
 @app.route("/signup", methods=["POST"])
@@ -348,6 +606,11 @@ def home():
     return render_template("user_index.html")
 
 
+@app.route("/DARQade")
+def arcade():
+    return render_template("arcade.html")
+
+
 @app.route("/Gamedev/Dashboard")
 def dash():
     return render_template("dashboard.html")
@@ -388,7 +651,9 @@ def initialize_agent():
         # For this example we only add the "deploy_token" tool.
         if tool.name == "deploy_token":
             all_tools.append(tool)
-
+    all_tools.append(pay_game_fee_tool_instance)
+    all_tools.append(eth_balance_tool_instance)
+    all_tools.append(transfer_token_tool_instance)
     # Set up an in-memory buffer for conversation history.
     memory = MemorySaver()
     config = {"configurable": {"thread_id": "CDP Agentkit Chatbot Example!"}}
@@ -422,20 +687,81 @@ def start_game_test():
     """
     data = request.json
     game_id = data.get("game_id", "")
-
+    user_uuid = data.get("user_uuid", "NA")
+    print(data)
     utils.token_gen.update_config()
     game = utils.get_game(game_id)
-    print(game)
     if game == {}:
         return jsonify({"error": "Game not found."}), 404
     prompt = game.get("prompt")
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_id(game["game_developer"])
+    if gamedev == {}:
+        return jsonify({"error": "GameDev not found."}), 404
+
+    prompt_suffix = f"""\n\n The Game Fee is {game.get("cost_in_eth")}. This is not needed for testing. 
+    The Reward for sucess is {game.get("reward_in_tokens")}.
+    The user UUID is {user_uuid}. This is important for the payment of the game fee.
+    The Token address for the reward is {gamedev["Token"]}."""
     # Initialize a new agent instance.
     agent_executor, config = initialize_agent()
 
     # Prime the conversation with the initial prompt.
     initial_response = ""
     for chunk in agent_executor.stream(
-        {"messages": [HumanMessage(content=prompt)]}, config
+        {"messages": [HumanMessage(content=prompt + prompt_suffix)]}, config
+    ):
+        if "agent" in chunk:
+            # Capture the agent's response (the last such chunk will be used).
+            initial_response = chunk["agent"]["messages"][0].content
+
+    # Generate a unique session ID and store the agent instance and config.
+    session_id = str(uuid.uuid4())
+    game_test_sessions[session_id] = (agent_executor, config)
+
+    return (
+        jsonify(
+            {
+                "session_id": session_id,
+                "message": "Game test session started.",
+                "initial_response": initial_response,
+            }
+        ),
+        201,
+    )
+
+
+@app.route("/start_game", methods=["POST"])
+def start_game():
+    """
+    Starts a new game test session.
+    Expects JSON input with a "prompt" key containing the initial prompt.
+    Returns a unique session_id along with the agent’s first response.
+    """
+    data = request.json
+    game_id = data.get("game_id", "")
+    user_uuid = data.get("user_uuid", "NA")
+
+    utils.token_gen.update_config()
+    game = utils.get_game(game_id)
+    if game == {}:
+        return jsonify({"error": "Game not found."}), 404
+    prompt = game.get("prompt")
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_id(game["game_developer"])
+    if gamedev == {}:
+        return jsonify({"error": "GameDev not found."}), 404
+    prompt_suffix = f"""\n\n The Game Fee is {game.get("cost_in_eth")}. You need to deduct this on the start of the game everytime. This is absolutely important.
+    The Reward for sucess is {game.get("reward_in_tokens")}. You need to add this to the user's wallet in case the user won.
+    The user UUID is {user_uuid}. This is important for the payment of the game fee.
+    The Token address for the reward token is {gamedev["Token"]}."""
+    # Initialize a new agent instance.
+    agent_executor, config = initialize_agent()
+
+    # Prime the conversation with the initial prompt.
+    initial_response = ""
+    for chunk in agent_executor.stream(
+        {"messages": [HumanMessage(content=prompt + prompt_suffix)]}, config
     ):
         if "agent" in chunk:
             # Capture the agent's response (the last such chunk will be used).
@@ -477,8 +803,10 @@ def chat(session_id):
         {"messages": [HumanMessage(content=user_input)]}, config
     ):
         if "agent" in chunk:
+            print(chunk["agent"]["messages"][0].content)
             response_text = chunk["agent"]["messages"][0].content
-
+        elif "tools" in chunk:
+            print(chunk["tools"]["messages"][0].content)
     return jsonify({"response": response_text})
 
 
@@ -492,6 +820,33 @@ def end_game_test(session_id):
         return jsonify({"message": "Game test session ended."})
     else:
         return jsonify({"error": "Session not found."}), 404
+
+
+def get_address_from_basename(basename):
+    response = requests.get(f"{BLOCKSCOUT_API_URL}{basename}")
+    print(response)
+    if response.status_code == 200:
+        data = response.json()
+        if len(data) > 0:
+            return data[0]["address"]
+    return "Not available"
+
+
+@app.route("/profile/<user_id>/info", methods=["GET"])
+def get_profile_info(user_id):
+    # In a real app you would extract the user identifier from the session or request token
+    # and then fetch the corresponding profile from your database.
+    utils.token_gen.update_config()
+    user = utils.get_user_by_id(user_id)
+    if user == {}:
+        return jsonify({"error": "User not found."}), 404
+
+    user_profile = {
+        "email": user["Email"],
+        "basename": user["Basename"],
+        "wallet": get_address_from_basename(user["Basename"]),
+    }
+    return jsonify(user_profile), 200
 
 
 if __name__ == "__main__":

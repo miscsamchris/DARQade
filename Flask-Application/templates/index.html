@@ -544,7 +544,6 @@
 
                 try {
                     const response = await axios.post('/create_token', data);
-                    alert(`Token created successfully!\nContract Address: ${response.data.contract_address}`);
                     modal.classList.add('hidden');
                     createTokenForm.reset();
                     window.location.href = "{{url_for('dash')}}";

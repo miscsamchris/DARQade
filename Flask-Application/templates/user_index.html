@@ -235,8 +235,7 @@
   </footer>
 
   <!-- Authentication Modal with Tabs -->
-<!-- Authentication Modal with Tabs (Fixed Size, Larger, and Footer Button Fixed at Bottom) -->
-<div id="auth-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
+  <div id="auth-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
     <!-- Overlay -->
     <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
     <!-- Modal Container (Fixed size and larger) -->
@@ -299,67 +298,71 @@
         mobileMenuToggle.innerHTML = '<i class="ri-menu-line"></i>';
       });
     });
-// Show/Hide Authentication Modal
-function showAuthModal() {
-    document.getElementById('auth-modal').classList.remove('hidden');
-  }
-  function hideAuthModal() {
-    document.getElementById('auth-modal').classList.add('hidden');
-  }
-  
-  // Tab Switching Functionality with Dynamic Button Update
-  function switchTab(tab) {
-    const signupTab = document.getElementById('signup-tab');
-    const loginTab = document.getElementById('login-tab');
-    const signupBtn = document.getElementById('tab-signup');
-    const loginBtn = document.getElementById('tab-login');
-    const actionButton = document.getElementById('auth-action-button');
-    
-    if (tab === 'signup') {
-      signupTab.classList.remove('hidden');
-      loginTab.classList.add('hidden');
-      signupBtn.classList.add('tab-active');
-      loginBtn.classList.remove('tab-active');
-      actionButton.innerText = "Sign Up";
-      actionButton.setAttribute("onclick", "handleRequest('{{ url_for('signup') }}')");
-      actionButton.classList.remove("bg-green-500", "hover:bg-green-700");
-      actionButton.classList.add("bg-blue-500", "hover:bg-blue-700");
-    } else {
-      signupTab.classList.add('hidden');
-      loginTab.classList.remove('hidden');
-      signupBtn.classList.remove('tab-active');
-      loginBtn.classList.add('tab-active');
-      actionButton.innerText = "Login";
-      actionButton.setAttribute("onclick", "handleRequest('{{ url_for('login') }}')");
-      actionButton.classList.remove("bg-blue-500", "hover:bg-blue-700");
-      actionButton.classList.add("bg-green-500", "hover:bg-green-700");
+    // Show/Hide Authentication Modal
+    function showAuthModal() {
+      document.getElementById('auth-modal').classList.remove('hidden');
     }
-  }
-  
-  // Handle sign-up and login requests
-  async function handleRequest(endpoint) {
-    const isSignup = endpoint.includes('signup');
-    const email = document.querySelector(isSignup ? '#signup-email' : '#login-email').value;
-    const password = document.querySelector(isSignup ? '#signup-password' : '#login-password').value;
-    const basename = document.querySelector('#signup-basename')?.value;
-    
-    const data = { email, password };
-    if (basename) data.basename = basename;
-    
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-      const result = await response.json();
-      document.getElementById('message').textContent = result.message || result.error;
-    } catch (error) {
-      document.getElementById('message').textContent = "An error occurred. Please try again.";
+    function hideAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
     }
-  }
   
+    // Tab Switching Functionality with Dynamic Button Update
+    function switchTab(tab) {
+      const signupTab = document.getElementById('signup-tab');
+      const loginTab = document.getElementById('login-tab');
+      const signupBtn = document.getElementById('tab-signup');
+      const loginBtn = document.getElementById('tab-login');
+      const actionButton = document.getElementById('auth-action-button');
+    
+      if (tab === 'signup') {
+        signupTab.classList.remove('hidden');
+        loginTab.classList.add('hidden');
+        signupBtn.classList.add('tab-active');
+        loginBtn.classList.remove('tab-active');
+        actionButton.innerText = "Sign Up";
+        actionButton.setAttribute("onclick", "handleRequest('{{ url_for('signup') }}')");
+        actionButton.classList.remove("bg-green-500", "hover:bg-green-700");
+        actionButton.classList.add("bg-blue-500", "hover:bg-blue-700");
+      } else {
+        signupTab.classList.add('hidden');
+        loginTab.classList.remove('hidden');
+        signupBtn.classList.remove('tab-active');
+        loginBtn.classList.add('tab-active');
+        actionButton.innerText = "Login";
+        actionButton.setAttribute("onclick", "handleRequest('{{ url_for('login') }}')");
+        actionButton.classList.remove("bg-blue-500", "hover:bg-blue-700");
+        actionButton.classList.add("bg-green-500", "hover:bg-green-700");
+      }
+    }
   
+    // Handle sign-up and login requests.
+    // When handling login, store the response data in localStorage.
+    async function handleRequest(endpoint) {
+      const isSignup = endpoint.includes('signup');
+      const email = document.querySelector(isSignup ? '#signup-email' : '#login-email').value;
+      const password = document.querySelector(isSignup ? '#signup-password' : '#login-password').value;
+      const basename = document.querySelector('#signup-basename')?.value;
+    
+      const data = { email, password };
+      if (basename) data.basename = basename;
+    
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        // Store response data in localStorage when the user logs in
+        if (!isSignup && response.ok) {
+          localStorage.setItem("token", JSON.stringify(result));
+        }
+        document.getElementById('message').textContent = result.message || result.error;
+        window.location.href = "{{url_for('arcade')}}";
+      } catch (error) {
+        document.getElementById('message').textContent = "An error occurred. Please try again.";
+      }
+    }
   </script>
 </body>
 </html>

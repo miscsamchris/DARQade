@@ -1,3 +1,6 @@
 
 .env
 Flask-Application/wallet_data.txt
+/Flask-Application/static/upload
+*.pyc
+/Flask-Application/__pycache__

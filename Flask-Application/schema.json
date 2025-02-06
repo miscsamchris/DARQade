@@ -22,6 +22,9 @@
                 "total_supply": {
                     "type": "string"
                 },
+                "balance": {
+                    "type": "string"
+                },
                 "contract_address": {
                     "type": "string"
                 },
@@ -36,6 +39,7 @@
                 "total_supply",
                 "contract_address",
                 "creator",
+                "balance",
                 "_id"
             ],
             "additionalProperties": false
@@ -136,7 +140,14 @@
                     "type": "number",
                     "minimum": 0
                 },
+                "players": {
+                    "type": "number",
+                    "minimum": 0
+                },
                 "status": {
+                    "type": "string"
+                },
+                "imagePath": {
                     "type": "string"
                 },
                 "game_developer": {
@@ -152,6 +163,7 @@
                 "reward_in_tokens",
                 "game_type",
                 "revenue",
+                "players",
                 "game_developer"
             ],
             "additionalProperties": false
