@@ -136,6 +136,9 @@
                     "type": "number",
                     "minimum": 0
                 },
+                "status": {
+                    "type": "string"
+                },
                 "game_developer": {
                     "type": "string"
                 }
