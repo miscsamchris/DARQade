@@ -15,4 +15,3 @@ ecdsa
 nilql
 gunicorn
 cloudinary
-Flask-Markdown
