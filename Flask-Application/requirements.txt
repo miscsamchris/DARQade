@@ -10,3 +10,4 @@ cdp-langchain
 langchain-core
 langchain-openai
 langgraph
+gunicorn
