@@ -10,4 +10,7 @@ cdp-langchain
 langchain-core
 langchain-openai
 langgraph
+PyJWT
+ecdsa
+nilql
 gunicorn
