@@ -222,6 +222,7 @@ class PayGameFeeInput(BaseModel):
     recipient_wallet: str = Field(
         ..., description="The wallet address that will receive the game fee."
     )
+    game_id: str = Field(..., description="The Game's UUID.")
 
 
 class TransferTokenInput(BaseModel):
@@ -262,7 +263,9 @@ def eth_balance_tool(wallet_address: str) -> str:
 ########################################
 # 8. Pay Game Fee Tool
 ########################################
-def pay_game_fee_tool(user_uuid: str, amount: float, recipient_wallet: str) -> str:
+def pay_game_fee_tool(
+    user_uuid: str, amount: float, recipient_wallet: str, game_id: str
+) -> str:
     """
     Pay a game fee by transferring ETH from a user's account to a specified recipient wallet.
 
@@ -270,6 +273,7 @@ def pay_game_fee_tool(user_uuid: str, amount: float, recipient_wallet: str) -> s
         user_uuid: The user's UUID.
         amount: The amount of ETH to send (in ether).
         recipient_wallet: The wallet address that will receive the game fee.
+        game_id: The Games's UUID.
 
     Returns:
         A JSON string with a success message and the transaction hash.
@@ -298,6 +302,42 @@ def pay_game_fee_tool(user_uuid: str, amount: float, recipient_wallet: str) -> s
     signed_txn = web3.eth.account.sign_transaction(transaction, myacc.key.hex())
     tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_wallet(recipient_wallet)
+    if gamedev != {}:
+        utils.token_gen.update_config()
+        utils.update_gamedev(
+            gamedev_id=gamedev["_id"],
+            email=gamedev["Email"],
+            company_name=gamedev["Company Name"],
+            password=gamedev["Password"],
+            website=gamedev["Website"],
+            description=gamedev["Description"],
+            wallet_address=gamedev["Wallet Address"],
+            private_key=gamedev["Private Key"],
+            token=gamedev["Token"],
+            total_revenue=gamedev["Total Revenue"] + amount,
+            active_status=gamedev["Active Status"],
+            verified=gamedev["Verified"],
+        )
+    utils.token_gen.update_config()
+    game = utils.get_game(game_id)
+    if game != {}:
+        utils.token_gen.update_config()
+        utils.update_game(
+            game_id,
+            title=game["title"],
+            description=game["description"],
+            prompt=game["prompt"],
+            winning_condition=game["winning_condition"],
+            cost_in_eth=game["cost_in_eth"],
+            reward_in_tokens=game["reward_in_tokens"],
+            card_type=game["game_type"],
+            revenue=game["revenue"] + amount,
+            players=game["players"] + 1,
+            imagePath=game["imagePath"],
+            status=game["status"],
+        )
     return json.dumps(
         {"message": "Game fee paid", "transaction_hash": web3.to_hex(tx_hash)}
     )
@@ -491,7 +531,13 @@ def get_games(uuid):
     games = utils.get_games_by_gamedev(uuid)
     if games == {}:
         return jsonify({"error": "Game developer not found"}), 404
-    return jsonify(games["games"]), 200
+    utils.token_gen.update_config()
+    gamedev = utils.get_gamedev_by_id(uuid)
+    if gamedev == {}:
+        revenue = 0.0
+    else:
+        revenue = gamedev["Total Revenue"]
+    return jsonify({"Games": games["games"], "Revenue": revenue}), 200
 
 
 @app.route("/arcade_games", methods=["GET"])
@@ -500,7 +546,16 @@ def get_arcade_games():
     games = utils.get_games_by_status("Released")
     if games == {}:
         return jsonify({"error": "Game developer not found"}), 404
-    return jsonify(games["games"]), 200
+    GAMES = []
+    for game in games["games"]:
+        print(game)
+        utils.token_gen.update_config()
+        gamedev = utils.get_gamedev_by_id(game["game_developer"])
+        token = utils.get_token_by_gamedev_wallet(gamedev["Wallet Address"])
+        game["token"] = f" {token['name']} ({token['symbol']})"
+        game["publisher"] = gamedev["Company Name"]
+        GAMES.append(game)
+    return jsonify(GAMES), 200
 
 
 @app.route("/gamedev/create_game", methods=["POST"])
@@ -692,7 +747,7 @@ def initialize_agent():
         func=pay_game_fee_tool,
         description=(
             "Pay a game fee by transferring ETH from a user's account to a specified wallet. "
-            "Input parameters: user_uuid (str), amount (float, in ether), recipient_wallet (str)."
+            "Input parameters: user_uuid (str), amount (float, in ether), recipient_wallet (str), game_id (str)."
         ),
         args_schema=PayGameFeeInput,
         cdp_agentkit_wrapper=agentkit,
@@ -814,7 +869,7 @@ def start_game():
     prompt_suffix = f"""\nThe Winning Condition:\n{game.get("winning_condition")}  \n\n The amount is {game.get("cost_in_eth")} and the recipient_wallet is  {gamedev.get("Wallet Address")}. You need to deduct this on the start of the game everytime. This is absolutely important.
     The Reward for sucess is {game.get("reward_in_tokens")}. You need to add this to the user's wallet in case the user won. You need to use the transfer_token tool for this. 
     The Game Developer uuid is {game["game_developer"]}.
-    The user UUID is {user_uuid}. This is important for the payment of the game fee.
+    The user UUID is {user_uuid}. This is important for the payment of the game fee. The Game UUID is {game_id}.
     The Token address for the reward token is {gamedev["Token"]}."""
     # Initialize a new agent instance.
     agent_executor, config = initialize_agent()
@@ -938,8 +993,9 @@ def get_profile_tokens(user_id):
         tk_data.append(
             {
                 "Token": token["name"],
+                "Address": token["contract_address"],
                 "Symbol": token["symbol"],
-                "balance": balance / (10**decimals),
+                "Balance": balance / (10**decimals),
             }
         )
     return jsonify(tk_data), 200
@@ -970,6 +1026,115 @@ def get_basenames():
     wallet_addresses = data["wallet_addresses"]
     unique_basenames = get_unique_basenames(wallet_addresses)
     return jsonify({"unique_basenames": unique_basenames})
+
+
+@app.route("/withdraw_tokens", methods=["POST"])
+def withdraw_tokens():
+    data = request.json
+    print(data)
+    uuid = data["uuid"]
+    token_address = data["token_address"]
+    amount = float(data["amount"])
+    utils.token_gen.update_config()
+    user = utils.get_user_by_id(uuid)
+    wallet_address = get_address_from_basename(user["Basename"])
+
+    transaction_hashes = []
+
+    myacc, message = get_wallet_from_uuid(uuid)
+    if myacc:
+        # ERC20 ABI for transfer
+        ERC20_ABI = [
+            {
+                "constant": False,
+                "inputs": [
+                    {"name": "_to", "type": "address"},
+                    {"name": "_value", "type": "uint256"},
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "type": "function",
+            },
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "", "type": "uint8"}],
+                "type": "function",
+            },
+        ]
+
+        contract = web3.eth.contract(address=token_address, abi=ERC20_ABI)
+
+        # Convert to smallest unit
+        decimals = contract.functions.decimals().call()
+        value = int(amount * (10**decimals))
+
+        # Build transaction
+        transaction = contract.functions.transfer(
+            wallet_address, value
+        ).build_transaction(
+            {
+                "from": myacc.address,
+                "gas": 100000,
+                "gasPrice": web3.to_wei("1", "gwei"),
+                "nonce": web3.eth.get_transaction_count(myacc.address),
+            }
+        )
+
+        # Sign and send transaction
+        signed_txn = web3.eth.account.sign_transaction(transaction, myacc.key.hex())
+        tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+        return (
+            jsonify(
+                {
+                    "message": "Tokens withdrawn",
+                    "transaction_hash": str(web3.to_hex(tx_hash)),
+                }
+            ),
+            200,
+        )
+    else:
+        return jsonify({"error": message}), 400
+
+
+@app.route("/withdraw_eth", methods=["POST"])
+def withdraw_eth():
+    data = request.json
+    uuid = data["uuid"]
+    amount = float(data["amount"])
+    print(data)
+    utils.token_gen.update_config()
+    user = utils.get_user_by_id(uuid)
+    wallet_address = get_address_from_basename(user["Basename"])
+
+    myacc, message = get_wallet_from_uuid(uuid)
+    if not myacc:
+        return jsonify({"error": message}), 400
+
+    # Convert amount to Wei
+    value = web3.to_wei(amount, "ether")
+    gas_price = web3.eth.gas_price
+    print(f"Gas Price: {gas_price}")
+    print(f"Value: {value}")
+    # Build transaction
+    transaction = {
+        "to": wallet_address,
+        "value": value,
+        "gas": 21000,
+        "gasPrice": web3.eth.gas_price,
+        "nonce": web3.eth.get_transaction_count(myacc.address),
+        "chainId": web3.eth.chain_id,
+    }
+
+    # Sign and send transaction
+    signed_txn = web3.eth.account.sign_transaction(transaction, myacc.key.hex())
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+
+    return (
+        jsonify({"message": "ETH withdrawn", "transaction_hash": web3.to_hex(tx_hash)}),
+        200,
+    )
 
 
 if __name__ == "__main__":

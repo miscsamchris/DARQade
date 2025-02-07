@@ -290,6 +290,7 @@
 
         // Populate the games table with an additional Logo column
         function populateGameTable(games, userUUID) {
+            list_games = games.Games;
             gameTableBody.innerHTML = '';
             if (games.length === 0) {
                 noGamesMessage.classList.remove('hidden');
@@ -297,7 +298,7 @@
             }
             noGamesMessage.classList.add('hidden');
 
-            games.forEach(game => {
+            list_games.forEach(game => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
           <td class="px-6 py-4 whitespace-nowrap">
@@ -332,11 +333,11 @@
             });
 
             // Update Stats
-            document.getElementById('total-games').textContent = games.length;
+            document.getElementById('total-games').textContent = list_games.length;
             document.getElementById('total-revenue').textContent =
-                games.reduce((sum, game) => sum + (parseFloat(game.revenue) || 0), 0).toFixed(4) + ' ETH';
+                games.Revenue.toFixed(5) + ' ETH';
             document.getElementById('total-players').textContent =
-                games.reduce((sum, game) => sum + (parseInt(game.players) || 0), 0);
+                list_games.reduce((sum, game) => sum + (parseInt(game.players) || 0), 0);
         }
 
         // Chat Modal functions and chat endpoint integration

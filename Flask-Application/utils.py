@@ -985,6 +985,84 @@ def get_gamedev_by_id(uid: str) -> Dict:
         return {}
 
 
+def get_gamedev_by_wallet(wallet: str) -> Dict:
+    """Authenticate GameDev based on email filter and decrypt stored credentials."""
+    try:
+        filter_dict = {"wallet_address": wallet}
+
+        gamedevs = {}
+        for node_name in ["node_a", "node_b", "node_c"]:
+            node_gamedevs = nildb_api.data_read(
+                node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
+            )
+            print("Filtered GameDevs:", node_gamedevs)
+
+            for gamedev in node_gamedevs:
+                gamedev_id = gamedev["_id"]
+                if gamedev_id not in gamedevs:
+                    gamedevs[gamedev_id] = {
+                        "_id": gamedev_id,
+                        "email": gamedev["email"],
+                        "company_name": gamedev["company_name"],
+                        "website": gamedev["website"],
+                        "description": gamedev["description"],
+                        "wallet_address": gamedev["wallet_address"],
+                        "verified": gamedev["verified"],
+                        "total_revenue": gamedev["total_revenue"],
+                        "active_status": gamedev["active_status"],
+                        "token": gamedev["token"],
+                        "password_shares": [],
+                        "private_key_shares": [],
+                    }
+                gamedevs[gamedev_id]["password_shares"].append(gamedev["password"])
+                gamedevs[gamedev_id]["private_key_shares"].append(
+                    gamedev["private_key"]
+                )
+
+        if not gamedevs:
+            print("GameDev not found.")
+            return {}
+
+        # Since email is unique, there should be only one match
+        gamedev_id, gamedev_data = next(iter(gamedevs.items()))
+
+        # Ensure all password shares are retrieved before decryption
+        if len(gamedev_data["password_shares"]) == NUM_NODES:
+            decrypted_password = encryption.decrypt_password(
+                gamedev_data["password_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt password.")
+            return {}
+
+        # Ensure all private key shares are retrieved before decryption
+        if len(gamedev_data["private_key_shares"]) == NUM_NODES:
+            decrypted_private_key = encryption.decrypt_password(
+                gamedev_data["private_key_shares"]
+            )
+        else:
+            print("Incomplete data, unable to decrypt private key.")
+            return {}
+        return {
+            "_id": gamedev_data["_id"],
+            "Email": gamedev_data["email"],
+            "Company Name": gamedev_data["company_name"],
+            "Website": gamedev_data["website"],
+            "Description": gamedev_data["description"],
+            "Wallet Address": gamedev_data["wallet_address"],
+            "Verified": gamedev_data["verified"],
+            "Total Revenue": gamedev_data["total_revenue"],
+            "Active Status": gamedev_data["active_status"],
+            "Token": gamedev_data["token"],
+            "Password": decrypted_password,
+            "Private Key": decrypted_private_key,
+        }
+
+    except Exception as e:
+        print(f"Error during GameDev login: {str(e)}")
+        return {}
+
+
 def update_gamedev(
     gamedev_id: str,
     email: str,
@@ -995,7 +1073,7 @@ def update_gamedev(
     wallet_address: str,
     private_key: str,
     verified: bool,
-    total_revenue: int,
+    total_revenue: float,
     active_status: bool,
     token: str,
 ) -> bool:

@@ -1,414 +1,508 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DARQade - My Game Library</title>
-    <!-- Tailwind CSS and Axios -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <!-- Font Awesome for icons -->
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
-    />
-    <style>
-      /* Import fonts similar to your landing page */
-      @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
-      @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap");
 
-      /* Global Styles */
-      body,
-      html {
-        margin: 0;
-        padding: 0;
-        min-height: 100%;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DARQade - My Game Library</title>
+  <!-- Tailwind CSS and Axios -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <style>
+    /* Import fonts similar to your landing page */
+    @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+    @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap");
 
-      body {
-        font-family: "Press Start 2P", cursive;
-        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
-        color: white;
-      }
+    /* Global Styles */
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+    }
 
-      .future-font {
-        font-family: "Orbitron", sans-serif;
-      }
+    body {
+      font-family: "Press Start 2P", cursive;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+      color: white;
+    }
 
-      /* Glass effect matching your landing page */
-      .glass {
-        background: rgba(26, 26, 46, 0.9);
-        backdrop-filter: blur(10px);
-        border-radius: 10px;
-        padding: 20px;
-        border: 1px solid rgba(79, 70, 229, 0.3);
-      }
+    .future-font {
+      font-family: "Orbitron", sans-serif;
+    }
 
-      /* Additional styling for profile modal tabs */
-      .profile-tab-btn {
-        flex: 1;
-        padding: 0.75rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: background 0.3s;
-      }
-      .tab-active {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-      
-      /* Carousel Styles */
-      .carousel-container {
-        position: relative;
-        width: 100%;
-        min-height: 600px; /* Increased height for a bigger carousel */
-      }
-    
-      .carousel-wrapper {
-        width: 100%;
-        overflow: hidden;
-      }
-    
-      .carousel-track {
-        display: flex;
-        transition: transform 0.5s ease-in-out;
-        width: 100%;
-      }
-    
-      .carousel-slide {
-        min-width: 100%;
-        flex: 0 0 100%;
-        display: flex;
-        background: rgba(26, 26, 46, 0.9);
-        border-radius: 12px;
-        overflow: hidden;
-      }
-    
-      .game-details {
-        width: 50%;
-        padding: 2rem;
-        display: flex;
-        flex-direction: column;
-      }
-      
-      /* Updated Game Images Styles */
-      .game-images {
-        position: relative;
-        width: 50%;
-        height: 600px; /* Match carousel height */
-      }
-      
-      /* Background image (game screenshot) positioned to appear within the arcade machine "screen" */
-      .game-image-bg {
-        position: absolute;
-        top: 29%;      /* Adjust vertical positioning */
-        left: 36%;     /* Adjust horizontal positioning */
-        width: 27%;    /* Adjust container width */
-        height: 27%;   /* Adjust container height */
-        z-index: 1;
-        overflow: hidden;
-      }
-      
-      /* Foreground image (arcade machine frame) fills the container */
-      .game-image-fg {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 2;
-      }
-      
-      /* Specific styles for each image type */
-      .game-image-bg img {
-        width: 100%;
-        height: 100%;
-        object-fit: fill; /* Stretches the image to completely fill the container */
-      }
-      
-      .game-image-fg img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* Display the full foreground image without cropping */
-      }
-      
-      /* New Play Button Styling */
-      .play-button {
-        position: absolute;
-        top: 80%;           /* Adjust vertical position as needed */
-        left: 50%;          /* Center horizontally */
-        transform: translate(-50%, -50%);
-        z-index: 3;
-        background-color: #4f46e5; /* Tailwind Indigo-600 */
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
-        border: none;
-        color: white;
-        cursor: pointer;
-        font-family: "Press Start 2P", cursive;
-        transition: background-color 0.3s;
-      }
-      
-      .play-button:hover {
-        background-color: #4338ca; /* Tailwind Indigo-700 */
-      }
-      
-      .carousel-nav-btn {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(0, 0, 0, 0.5);
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background-color 0.3s;
-        z-index: 10;
-      }
-    
-      .carousel-nav-btn:hover {
-        background: rgba(0, 0, 0, 0.75);
-      }
-    
-      .carousel-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        cursor: pointer;
-        transition: background-color 0.3s;
-      }
-    
-      .carousel-dot.active {
-        background: white;
-      }
-    </style>
-  </head>
+    /* Glass effect matching your landing page */
+    .glass {
+      background: rgba(26, 26, 46, 0.9);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid rgba(79, 70, 229, 0.3);
+    }
 
-  <body class="min-h-screen">
-    <!-- Navigation -->
-    <nav class="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-md">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <h1 class="text-2xl font-bold">DARQade Arcade</h1>
-          </div>
-          <div class="flex items-center space-x-4">
-            <!-- Clicking this link opens the My Profile modal -->
-            <a href="#" class="text-white hover:text-indigo-400" onclick="showProfileModal()">My Profile</a>
-            <button
-              id="logout-button"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none"
-            >
-              <i class="fas fa-sign-out-alt mr-2"></i> Logout
-            </button>
-          </div>
+    /* Additional styling for profile modal tabs */
+    .profile-tab-btn {
+      flex: 1;
+      padding: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .tab-active {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Carousel Styles */
+    .carousel-container {
+      position: relative;
+      width: 100%;
+      min-height: 600px;
+      /* Increased height for a bigger carousel */
+    }
+
+    .carousel-wrapper {
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 0.5s ease-in-out;
+      width: 100%;
+    }
+
+    .carousel-slide {
+      min-width: 100%;
+      flex: 0 0 100%;
+      display: flex;
+      background: rgba(26, 26, 46, 0.9);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .game-details {
+      width: 50%;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Updated Game Images Styles */
+    .game-images {
+      position: relative;
+      width: 50%;
+      height: 600px;
+      /* Match carousel height */
+    }
+
+    /* Background image (game screenshot) positioned to appear within the arcade machine "screen" */
+    .game-image-bg {
+      position: absolute;
+      top: 29%;
+      /* Adjust vertical positioning */
+      left: 36%;
+      /* Adjust horizontal positioning */
+      width: 27%;
+      /* Adjust container width */
+      height: 27%;
+      /* Adjust container height */
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    /* Foreground image (arcade machine frame) fills the container */
+    .game-image-fg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+
+    /* Specific styles for each image type */
+    .game-image-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      /* Stretches the image to completely fill the container */
+    }
+
+    .game-image-fg img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      /* Display the full foreground image without cropping */
+    }
+
+    /* New Play Button Styling */
+    .play-button {
+      position: absolute;
+      top: 80%;
+      /* Adjust vertical position as needed */
+      left: 50%;
+      /* Center horizontally */
+      transform: translate(-50%, -50%);
+      z-index: 3;
+      background-color: #4f46e5;
+      /* Tailwind Indigo-600 */
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-family: "Press Start 2P", cursive;
+      transition: background-color 0.3s;
+    }
+
+    .play-button:hover {
+      background-color: #4338ca;
+      /* Tailwind Indigo-700 */
+    }
+
+    .carousel-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s;
+      z-index: 10;
+    }
+
+    .carousel-nav-btn:hover {
+      background: rgba(0, 0, 0, 0.75);
+    }
+
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .carousel-dot.active {
+      background: white;
+    }
+
+    .profile-tab-btn {
+      flex: 1;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s, transform 0.2s;
+      text-align: center;
+    }
+
+    .profile-tab-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .tab-active {
+      background-color: rgba(79, 70, 229, 0.3);
+      color: #fff;
+      border-radius: 8px;
+    }
+
+    /* Scrollable Content */
+    .profile-tab-content {
+      padding: 1rem;
+    }
+
+    /* Token List */
+    #token-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    #token-list li:last-child {
+      border-bottom: none;
+    }
+
+    /* Withdraw Button */
+    .withdraw-button {
+      background-color: #4f46e5;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    .withdraw-button:hover {
+      background-color: #4338ca;
+    }
+
+    /* Input Styling */
+    .withdraw-input {
+      width: 80px;
+      background: #333;
+      color: white;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 bg-black/30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <div class="flex items-center">
+          <h1 class="text-2xl font-bold">DARQade Arcade</h1>
         </div>
-      </div>
-    </nav>
-
-    <!-- Game Carousel Section -->
-    <section class="game-carousel-section max-w-7xl mx-auto pt-20 pb-10 px-4 sm:px-6 lg:px-8">
-      <div class="glass p-6 mb-8">
-        <h2 class="text-2xl font-bold mb-6 text-center">My Game Library</h2>
-        
-        <div class="carousel-container relative">
-          <div id="game-carousel" class="carousel-wrapper">
-            <div class="carousel-track">
-              <!-- Games will be dynamically inserted here -->
-            </div>
-          </div>
-          
-          <!-- Navigation Buttons -->
-          <button id="prevBtn" class="carousel-nav-btn left-4">
-            <i class="fas fa-chevron-left"></i>
-          </button>
-          <button id="nextBtn" class="carousel-nav-btn right-4">
-            <i class="fas fa-chevron-right"></i>
-          </button>
-          
-          <!-- Dots navigation -->
-          <div id="carousel-dots" class="flex justify-center mt-4 space-x-2">
-            <!-- Dots will be dynamically inserted here -->
-          </div>
-        </div>
-      </div>
-    </section>
-    
-    <!-- Chat Modal -->
-    <div
-      id="chat-modal"
-      class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full"
-      style="z-index: 9999;"
-    >
-      <div
-        class="relative top-20 mx-auto p-5 w-4/5 max-w-2xl shadow-lg rounded-md bg-gray-800 flex flex-col"
-        style="height: 80vh;"
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-2xl font-bold text-white">Chat with Bot</h2>
-          <button id="chat-close-button" class="text-white text-2xl leading-none">&times;</button>
-        </div>
-        <div id="chat-messages" class="bg-gray-700 p-4 rounded flex-grow overflow-y-auto mb-4">
-          <!-- Chat messages will appear here -->
-        </div>
-        <div class="flex">
-          <input
-            id="chat-input"
-            type="text"
-            placeholder="Type a message..."
-            class="flex-grow p-2 rounded-l-md border border-gray-600 focus:outline-none"
-          />
-          <button
-            id="chat-send-button"
-            class="p-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none"
-          >
-            Send
+        <div class="flex items-center space-x-4">
+          <!-- Clicking this link opens the My Profile modal -->
+          <a href="#" class="text-white hover:text-indigo-400" onclick="showProfileModal()">My Profile</a>
+          <button id="logout-button"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none">
+            <i class="fas fa-sign-out-alt mr-2"></i> Logout
           </button>
         </div>
       </div>
     </div>
+  </nav>
 
-    <!-- My Profile Modal -->
-    <div id="profile-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
-      <!-- Overlay -->
-      <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
-      <!-- Modal Container -->
-      <div class="glass relative rounded-xl border border-indigo-600/30 p-6 w-11/12 max-w-3xl min-h-[500px] flex flex-col">
-        <!-- Close Button -->
-        <div class="flex justify-end mb-4">
-          <button
-            onclick="hideProfileModal()"
-            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded focus:outline-none"
-          >
-            Close
-          </button>
-        </div>
-        <!-- Tab Buttons -->
-        <div class="flex mb-4">
-          <button id="profile-tab-info" class="profile-tab-btn tab-active rounded-l px-4 py-2" onclick="switchProfileTab('info')">
-            Profile Info
-          </button>
-          <button id="profile-tab-tokens" class="profile-tab-btn rounded-none px-4 py-2" onclick="switchProfileTab('tokens')">
-            Token Balances
-          </button>
-          <button id="profile-tab-wallet" class="profile-tab-btn rounded-r px-4 py-2" onclick="switchProfileTab('wallet')">
-            Wallet
-          </button>
-        </div>
-        <!-- Content Area -->
-        <div class="flex-grow overflow-y-auto">
-          <!-- Profile Info Content -->
-          <div id="profile-info" class="profile-tab-content">
-            <h3 class="text-xl font-bold mb-4">User Information</h3>
-            <p>Email: <span id="profile-email">Loading...</span></p>
-            <p>BaseName: <span id="profile-basename">Loading...</span></p>
-            <p>Wallet Address: <span id="wallet-address">Loading...</span></p>
+  <!-- Game Carousel Section -->
+  <section class="game-carousel-section max-w-7xl mx-auto pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+    <div class="glass p-6 mb-8">
+      <h2 class="text-2xl font-bold mb-6 text-center">My Game Library</h2>
+
+      <div class="carousel-container relative">
+        <div id="game-carousel" class="carousel-wrapper">
+          <div class="carousel-track">
+            <!-- Games will be dynamically inserted here -->
           </div>
-          <!-- Token Balances Content -->
-          <div id="profile-tokens" class="profile-tab-content hidden">
-            <h3 class="text-xl font-bold mb-4">Token Balances</h3>
-            <ul>
-              <!-- Token list items will be injected here -->
+        </div>
+
+        <!-- Navigation Buttons -->
+        <button id="prevBtn" class="carousel-nav-btn left-4">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <button id="nextBtn" class="carousel-nav-btn right-4">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+
+        <!-- Dots navigation -->
+        <div id="carousel-dots" class="flex justify-center mt-4 space-x-2">
+          <!-- Dots will be dynamically inserted here -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chat Modal -->
+  <div id="chat-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full"
+    style="z-index: 9999;">
+    <div class="relative top-20 mx-auto p-5 w-4/5 max-w-2xl shadow-lg rounded-md bg-gray-800 flex flex-col"
+      style="height: 80vh;">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-white">Chat with Bot</h2>
+        <button id="chat-close-button" class="text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div id="chat-messages" class="bg-gray-700 p-4 rounded flex-grow overflow-y-auto mb-4">
+        <!-- Chat messages will appear here -->
+      </div>
+      <div class="flex">
+        <input id="chat-input" type="text" placeholder="Type a message..."
+          class="flex-grow p-2 rounded-l-md border border-gray-600 focus:outline-none" />
+        <button id="chat-send-button"
+          class="p-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none">
+          Send
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Profile Modal -->
+  <div id="profile-modal" class="fixed inset-0 flex items-center justify-center hidden z-50">
+    <!-- Overlay -->
+    <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-md"></div>
+
+    <!-- Modal Container -->
+    <div
+      class="glass relative rounded-xl border border-indigo-600 p-6 w-11/12 max-w-3xl min-h-[550px] flex flex-col shadow-lg">
+      <!-- Close Button -->
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-indigo-400">My Profile</h2>
+        <button onclick="hideProfileModal()"
+          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full focus:outline-none transition duration-300">
+          &times;
+        </button>
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="flex justify-between bg-gray-900 rounded-lg p-1 mb-4">
+        <button id="profile-tab-info"
+          class="profile-tab-btn tab-active rounded-lg px-4 py-2 transition-all duration-300 ease-in-out hover:bg-indigo-500 hover:text-white"
+          onclick="switchProfileTab('info')">
+          Profile Info
+        </button>
+        <button id="profile-tab-tokens"
+          class="profile-tab-btn rounded-lg px-4 py-2 transition-all duration-300 ease-in-out hover:bg-indigo-500 hover:text-white"
+          onclick="switchProfileTab('tokens')">
+          Token Balances
+        </button>
+        <button id="profile-tab-wallet"
+          class="profile-tab-btn rounded-lg px-4 py-2 transition-all duration-300 ease-in-out hover:bg-indigo-500 hover:text-white"
+          onclick="switchProfileTab('wallet')">
+          Wallet
+        </button>
+      </div>
+
+      <!-- Content Area -->
+      <div class="flex-grow overflow-y-auto text-gray-300">
+        <!-- Profile Info Content -->
+        <div id="profile-info" class="profile-tab-content">
+          <h3 class="text-xl font-bold text-indigo-400 mb-4">User Information</h3>
+          <div class="bg-gray-800 p-4 rounded-lg shadow-md">
+            <p class="mb-2"><span class="font-bold text-indigo-400">Email:</span> <span
+                id="profile-email">Loading...</span></p>
+            <p class="mb-2"><span class="font-bold text-indigo-400">Base Name:</span> <span
+                id="profile-basename">Loading...</span></p>
+            <p class="mb-2"><span class="font-bold text-indigo-400">Wallet Address:</span> <span
+                id="wallet-address">Loading...</span></p>
+          </div>
+        </div>
+
+        <!-- Token Balances Content -->
+        <div id="profile-tokens" class="profile-tab-content hidden">
+          <h3 class="text-xl font-bold text-indigo-400 mb-4">Token Balances</h3>
+          <div class="bg-gray-800 p-4 rounded-lg shadow-md">
+            <ul id="token-list">
+              <!-- Token list items will be dynamically inserted here -->
             </ul>
           </div>
-          <!-- Wallet Content -->
-          <div id="profile-wallet" class="profile-tab-content hidden">
-            <h3 class="text-xl font-bold mb-4">Wallet Information</h3>
-            <p>ETH Balance: <span id="eth-balance">0</span> ETH</p>
-            <p>Custodial Wallet Address: <span id="custodial-address">Loading...</span></p>
-            <div class="mt-4">
-              <h4 class="font-bold mb-2">QR Code:</h4>
-              <img id="wallet-qr" src="" alt="Wallet QR Code" class="w-48 h-48 object-contain">
+        </div>
+
+        <!-- Wallet Content -->
+        <div id="profile-wallet" class="profile-tab-content hidden">
+          <h3 class="text-xl font-bold text-indigo-400 mb-4">Wallet Information</h3>
+          <div class="bg-gray-800 p-4 rounded-lg shadow-md">
+            <p class="mb-2"><span class="font-bold text-indigo-400">ETH Balance:</span> <span id="eth-balance">0</span>
+              ETH</p>
+            <p class="mb-2"><span class="font-bold text-indigo-400">Custodial Wallet:</span> <span
+                id="custodial-address">Loading...</span></p>
+            <div class="mt-4 text-center">
+              <h4 class="font-bold text-indigo-400 mb-2">QR Code:</h4>
+              <img id="wallet-qr" src="" alt="Wallet QR Code"
+                class="w-40 h-40 mx-auto object-contain border border-indigo-600 rounded-lg">
+            </div>
+            <div class="mt-6">
+              <h4 class="text-xl font-bold text-indigo-400">Withdraw ETH</h4>
+              <div class="flex mt-2">
+                <input type="number" id="withdraw-eth-amount"
+                  class="flex-grow bg-gray-700 text-white p-2 rounded-l-md border border-gray-600" placeholder="Amount">
+                <button
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-md transition duration-300"
+                  onclick="withdrawETH()">Withdraw</button>
+
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
+  <!-- Footer -->
+  <footer class="text-center py-4">
+    <p class="text-gray-400 text-sm">&copy; 2025 DARQade. All rights reserved.</p>
+  </footer>
 
-    <!-- Footer -->
-    <footer class="text-center py-4">
-      <p class="text-gray-400 text-sm">&copy; 2025 DARQade. All rights reserved.</p>
-    </footer>
+  <!-- JavaScript -->
+  <script>
+    // Global variable to store the chat session ID
+    let chatSessionId = null;
 
-    <!-- JavaScript -->
-    <script>
-      // Global variable to store the chat session ID
-      let chatSessionId = null;
+    /**
+     * Fetch released games from the `/arcade_games` endpoint.
+     */
+    async function fetchArcadeGames() {
+      try {
+        const response = await axios.get("/arcade_games");
+        const games = response.data;
+        gameCarousel.populateCarousel(games);
+      } catch (error) {
+        console.error("Error fetching arcade games:", error);
+        const library = document.querySelector('.carousel-track');
+        library.innerHTML = `<p class="text-center text-red-400 w-full">Error loading games.</p>`;
+      }
+    }
 
-      /**
-       * Fetch released games from the `/arcade_games` endpoint.
-       */
-      async function fetchArcadeGames() {
-        try {
-          const response = await axios.get("/arcade_games");
-          const games = response.data;
-          gameCarousel.populateCarousel(games);
-        } catch (error) {
-          console.error("Error fetching arcade games:", error);
-          const library = document.querySelector('.carousel-track');
-          library.innerHTML = `<p class="text-center text-red-400 w-full">Error loading games.</p>`;
-        }
+    /**
+     * Populate the game library carousel with game slides.
+     */
+    class GameCarousel {
+      constructor() {
+        this.currentIndex = 0;
+        this.carousel = document.querySelector('.carousel-track');
+        this.games = [];
+        this.setupEventListeners();
       }
 
-      /**
-       * Populate the game library carousel with game slides.
-       */
-      class GameCarousel {
-        constructor() {
-          this.currentIndex = 0;
-          this.carousel = document.querySelector('.carousel-track');
-          this.games = [];
-          this.setupEventListeners();
-        }
-      
-        setupEventListeners() {
-          document.getElementById('prevBtn').addEventListener('click', () => this.prevSlide());
-          document.getElementById('nextBtn').addEventListener('click', () => this.nextSlide());
-      
-          // Add keyboard navigation
-          document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') this.prevSlide();
-            if (e.key === 'ArrowRight') this.nextSlide();
-          });
-        }
-      
-        populateCarousel(games) {
-          this.games = games;
-          this.carousel.innerHTML = '';
-          const dotsContainer = document.getElementById('carousel-dots');
-          dotsContainer.innerHTML = '';
-      
-          games.forEach((game, index) => {
-            // Create carousel slide
-            const slide = this.createSlide(game);
-            this.carousel.appendChild(slide);
-      
-            // Create dot
-            const dot = document.createElement('button');
-            dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
-            dot.addEventListener('click', () => this.goToSlide(index));
-            dotsContainer.appendChild(dot);
-          });
-      
-          this.updateCarousel();
-        }
-      
-        createSlide(game) {
-          const slide = document.createElement('div');
-          slide.className = 'carousel-slide';
-          
-          slide.innerHTML = `
+      setupEventListeners() {
+        document.getElementById('prevBtn').addEventListener('click', () => this.prevSlide());
+        document.getElementById('nextBtn').addEventListener('click', () => this.nextSlide());
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft') this.prevSlide();
+          if (e.key === 'ArrowRight') this.nextSlide();
+        });
+      }
+
+      populateCarousel(games) {
+        this.games = games;
+        this.carousel.innerHTML = '';
+        const dotsContainer = document.getElementById('carousel-dots');
+        dotsContainer.innerHTML = '';
+
+        games.forEach((game, index) => {
+          // Create carousel slide
+          const slide = this.createSlide(game);
+          this.carousel.appendChild(slide);
+
+          // Create dot
+          const dot = document.createElement('button');
+          dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+          dot.addEventListener('click', () => this.goToSlide(index));
+          dotsContainer.appendChild(dot);
+        });
+
+        this.updateCarousel();
+      }
+
+      createSlide(game) {
+        const slide = document.createElement('div');
+        slide.className = 'carousel-slide';
+
+        slide.innerHTML = `
             <div class="game-details">
               <h3 class="text-2xl font-bold mb-4">${game.title}</h3>
               <p class="text-gray-300 mb-6">${game.description}</p>
               <div class="mb-6">
                 <p class="text-sm text-gray-400">Developer</p>
-                <p class="text-lg">${game.game_developer}</p>
+                <p class="text-lg">${game.publisher}</p>
               </div>
               <div class="mb-6">
                 <p class="text-sm text-gray-400">Entry Fee to Play</p>
@@ -416,7 +510,7 @@
               </div>
               <div class="mb-6">
                 <p class="text-sm text-gray-400">Winning Prize</p>
-                <p class="text-lg">${game.reward_in_token}</p>
+                <p class="text-lg">${game.reward_in_tokens} ${game.token}</p>
               </div>
             </div>
             <div class="game-images">
@@ -433,231 +527,290 @@
               <button class="play-button" onclick="openChatModal('${game.uid}')">Play Now</button>
             </div>
           `;
-      
-          return slide;
-        }
-      
-        updateCarousel() {
-          const offset = -this.currentIndex * 100;
-          this.carousel.style.transform = `translateX(${offset}%)`;
-          
-          // Update dots
-          const dots = document.querySelectorAll('.carousel-dot');
-          dots.forEach((dot, index) => {
-            dot.classList.toggle('active', index === this.currentIndex);
-          });
-        }
-      
-        nextSlide() {
-          this.currentIndex = (this.currentIndex + 1) % this.games.length;
-          this.updateCarousel();
-        }
-      
-        prevSlide() {
-          this.currentIndex = (this.currentIndex - 1 + this.games.length) % this.games.length;
-          this.updateCarousel();
-        }
-      
-        goToSlide(index) {
-          this.currentIndex = index;
-          this.updateCarousel();
-        }
+
+        return slide;
       }
-      
-      // Initialize carousel and fetch arcade games on DOM content loaded
-      let gameCarousel;
-      document.addEventListener('DOMContentLoaded', () => {
-        gameCarousel = new GameCarousel();
-        fetchArcadeGames();
-      });
-      
-      /**
-       * Opens the chat modal and starts a game test session.
-       */
-      function openChatModal(gameId) {
-        document.getElementById("chat-modal").classList.remove("hidden");
-        document.getElementById("chat-messages").innerHTML = "";
 
-        // Retrieve the stored user data (assumes it includes a property 'uuid')
-        const token = JSON.parse(localStorage.getItem("token"));
-        if (!token || !token.uuid) {
-          appendChatMessage("bot", "User not logged in. Please log in to start a game session.");
-          return;
-        }
+      updateCarousel() {
+        const offset = -this.currentIndex * 100;
+        this.carousel.style.transform = `translateX(${offset}%)`;
 
-        // Call start_game endpoint with game_id and user_uuid as input.
+        // Update dots
+        const dots = document.querySelectorAll('.carousel-dot');
+        dots.forEach((dot, index) => {
+          dot.classList.toggle('active', index === this.currentIndex);
+        });
+      }
+
+      nextSlide() {
+        this.currentIndex = (this.currentIndex + 1) % this.games.length;
+        this.updateCarousel();
+      }
+
+      prevSlide() {
+        this.currentIndex = (this.currentIndex - 1 + this.games.length) % this.games.length;
+        this.updateCarousel();
+      }
+
+      goToSlide(index) {
+        this.currentIndex = index;
+        this.updateCarousel();
+      }
+    }
+
+    // Initialize carousel and fetch arcade games on DOM content loaded
+    let gameCarousel;
+    document.addEventListener('DOMContentLoaded', () => {
+      gameCarousel = new GameCarousel();
+      fetchArcadeGames();
+    });
+
+    /**
+     * Opens the chat modal and starts a game test session.
+     */
+    function openChatModal(gameId) {
+      document.getElementById("chat-modal").classList.remove("hidden");
+      document.getElementById("chat-messages").innerHTML = "";
+
+      // Retrieve the stored user data (assumes it includes a property 'uuid')
+      const token = JSON.parse(localStorage.getItem("token"));
+      if (!token || !token.uuid) {
+        appendChatMessage("bot", "User not logged in. Please log in to start a game session.");
+        return;
+      }
+
+      // Call start_game endpoint with game_id and user_uuid as input.
+      axios
+        .post("/start_game", { game_id: gameId, user_uuid: token.uuid })
+        .then((response) => {
+          chatSessionId = response.data.session_id;
+          appendChatMessage("bot", "Game session started. Say 'Start' to begin.");
+        })
+        .catch((error) => {
+          console.error("Error starting game test session:", error);
+          appendChatMessage("bot", "Error starting session.");
+        });
+    }
+
+    /**
+     * Closes the chat modal and ends the current game test session.
+     */
+    function closeChatModal() {
+      if (chatSessionId) {
         axios
-          .post("/start_game", { game_id: gameId, user_uuid: token.uuid })
+          .post(`/end_game_test/${chatSessionId}`, {})
           .then((response) => {
-            chatSessionId = response.data.session_id;
-            appendChatMessage("bot", "Game session started. Say 'Start' to begin.");
+            console.log("Session ended:", response.data.message);
           })
           .catch((error) => {
-            console.error("Error starting game test session:", error);
-            appendChatMessage("bot", "Error starting session.");
+            console.error("Error ending session:", error);
           });
+        chatSessionId = null;
+      }
+      document.getElementById("chat-modal").classList.add("hidden");
+      document.getElementById("chat-input").value = "";
+    }
+
+    /**
+     * Appends a chat message to the chat messages area.
+     */
+    function appendChatMessage(sender, message) {
+      const chatMessages = document.getElementById("chat-messages");
+      const messageDiv = document.createElement("div");
+      messageDiv.className = sender === "user" ? "text-right mb-2" : "text-left mb-2";
+      messageDiv.innerHTML = `<span class="px-2 py-1 rounded ${sender === "user" ? "bg-blue-600" : "bg-gray-500"}">${message}</span>`;
+      chatMessages.appendChild(messageDiv);
+      // Scroll to the bottom.
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    /**
+     * Sends a chat message using the `/chat/<session_id>` endpoint.
+     */
+    function sendChatMessage() {
+      const input = document.getElementById("chat-input");
+      const message = input.value.trim();
+      if (message === "") return;
+      appendChatMessage("user", message);
+      input.value = "";
+
+      if (!chatSessionId) {
+        appendChatMessage("bot", "Session not active. Please reopen chat.");
+        return;
       }
 
-      /**
-       * Closes the chat modal and ends the current game test session.
-       */
-      function closeChatModal() {
-        if (chatSessionId) {
-          axios
-            .post(`/end_game_test/${chatSessionId}`, {})
-            .then((response) => {
-              console.log("Session ended:", response.data.message);
-            })
-            .catch((error) => {
-              console.error("Error ending session:", error);
-            });
-          chatSessionId = null;
-        }
-        document.getElementById("chat-modal").classList.add("hidden");
-        document.getElementById("chat-input").value = "";
+      axios
+        .post(`/chat/${chatSessionId}`, { message: message })
+        .then((response) => {
+          const botReply = response.data.response;
+          appendChatMessage("bot", botReply);
+        })
+        .catch((error) => {
+          console.error("Error sending message:", error);
+          appendChatMessage("bot", "Error getting response.");
+        });
+    }
+
+    // Chat modal event listeners.
+    document.getElementById("chat-send-button").addEventListener("click", sendChatMessage);
+    document.getElementById("chat-input").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        sendChatMessage();
       }
+    });
+    document.getElementById("chat-close-button").addEventListener("click", closeChatModal);
 
-      /**
-       * Appends a chat message to the chat messages area.
-       */
-      function appendChatMessage(sender, message) {
-        const chatMessages = document.getElementById("chat-messages");
-        const messageDiv = document.createElement("div");
-        messageDiv.className = sender === "user" ? "text-right mb-2" : "text-left mb-2";
-        messageDiv.innerHTML = `<span class="px-2 py-1 rounded ${sender === "user" ? "bg-blue-600" : "bg-gray-500"}">${message}</span>`;
-        chatMessages.appendChild(messageDiv);
-        // Scroll to the bottom.
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    // Logout button handler.
+    document.getElementById("logout-button").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    });
+
+    // -------------------------------
+    // My Profile Modal Functions
+    // -------------------------------
+
+    function showProfileModal() {
+      const token = JSON.parse(localStorage.getItem("token"));
+      if (!token || !token.uuid) {
+        alert("User not logged in");
+        return;
       }
+      const userId = token.uuid;
 
-      /**
-       * Sends a chat message using the `/chat/<session_id>` endpoint.
-       */
-      function sendChatMessage() {
-        const input = document.getElementById("chat-input");
-        const message = input.value.trim();
-        if (message === "") return;
-        appendChatMessage("user", message);
-        input.value = "";
+      // Show the profile modal.
+      document.getElementById("profile-modal").classList.remove("hidden");
 
-        if (!chatSessionId) {
-          appendChatMessage("bot", "Session not active. Please reopen chat.");
-          return;
-        }
+      // Fetch Profile Info
+      axios.get(`/profile/${userId}/info`)
+        .then(response => {
+          const data = response.data;
+          document.getElementById("profile-email").textContent = data.email || "N/A";
+          document.getElementById("profile-basename").textContent = data.basename || "N/A";
+          document.getElementById("wallet-address").textContent = data.wallet || "N/A";
+          document.getElementById("custodial-address").textContent = data.custodial || "N/A";
+          document.getElementById("eth-balance").textContent = data.balance || "N/A";
+        })
+        .catch(error => {
+          console.error("Error fetching profile info:", error);
+          document.getElementById("profile-email").textContent = "Error";
+          document.getElementById("profile-basename").textContent = "Error";
+          document.getElementById("wallet-address").textContent = "Error";
+        });
 
-        axios
-          .post(`/chat/${chatSessionId}`, { message: message })
-          .then((response) => {
-            const botReply = response.data.response;
-            appendChatMessage("bot", botReply);
-          })
-          .catch((error) => {
-            console.error("Error sending message:", error);
-            appendChatMessage("bot", "Error getting response.");
+      // Fetch Token Balances
+      axios.get(`/profile/${userId}/tokens`)
+        .then(response => {
+          const tokens = response.data;
+          const tokenList = document.querySelector("#profile-tokens ul");
+          tokenList.innerHTML = "";
+          tokens.forEach(tk => {
+            const li = document.createElement("li");
+            li.innerHTML = `
+      <span> ${tk.Token} (${tk.Symbol}): ${tk.Balance}</span>
+      <input type="number" class="withdraw-input" id="withdraw-${tk.Symbol}" value="${tk.Balance}">
+      <button class="withdraw-button" onclick="withdrawToken('${tk.Symbol}', '${tk.Address}')">Withdraw</button>
+    `;
+            tokenList.appendChild(li);
           });
+        })
+        .catch(error => {
+          console.error("Error fetching token balances:", error);
+          document.getElementById("profile-tokens").innerHTML = "<p>Error loading token balances</p>";
+        });
+
+      // Set Wallet QR Code
+      document.getElementById("wallet-qr").src = `/profile/${userId}/qr`;
+    }
+
+    function hideProfileModal() {
+      document.getElementById("profile-modal").classList.add("hidden");
+    }
+
+    async function withdrawToken(tokenSymbol, tokenAddress) {
+      const amount = document.getElementById(`withdraw-${tokenSymbol}`).value;
+      if (amount <= 0) {
+        return;
       }
 
-      // Chat modal event listeners.
-      document.getElementById("chat-send-button").addEventListener("click", sendChatMessage);
-      document.getElementById("chat-input").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          sendChatMessage();
-        }
-      });
-      document.getElementById("chat-close-button").addEventListener("click", closeChatModal);
-
-      // Logout button handler.
-      document.getElementById("logout-button").addEventListener("click", () => {
-        localStorage.removeItem("token");
-        window.location.href = "/";
-      });
-
-      // -------------------------------
-      // My Profile Modal Functions
-      // -------------------------------
-
-      function showProfileModal() {
-        const token = JSON.parse(localStorage.getItem("token"));
-        if (!token || !token.uuid) {
-          alert("User not logged in");
-          return;
-        }
-        const userId = token.uuid;
-
-        // Show the profile modal.
-        document.getElementById("profile-modal").classList.remove("hidden");
-
-        // Fetch Profile Info
-        axios.get(`/profile/${userId}/info`)
-          .then(response => {
-            const data = response.data;
-            document.getElementById("profile-email").textContent = data.email || "N/A";
-            document.getElementById("profile-basename").textContent = data.basename || "N/A";
-            document.getElementById("wallet-address").textContent = data.wallet || "N/A";
-            document.getElementById("custodial-address").textContent = data.custodial || "N/A";
-            document.getElementById("eth-balance").textContent = data.balance || "N/A";
-          })
-          .catch(error => {
-            console.error("Error fetching profile info:", error);
-            document.getElementById("profile-email").textContent = "Error";
-            document.getElementById("profile-basename").textContent = "Error";
-            document.getElementById("wallet-address").textContent = "Error";
-          });
-
-        // Fetch Token Balances
-        axios.get(`/profile/${userId}/tokens`)
-          .then(response => {
-            const tokens = response.data;
-            const tokenList = document.querySelector("#profile-tokens ul");
-            tokenList.innerHTML = "";
-            tokens.forEach(tk => {
-              const li = document.createElement("li");
-              li.textContent = `${tk.Symbol}: ${tk.balance}`;
-              tokenList.appendChild(li);
-            });
-          })
-          .catch(error => {
-            console.error("Error fetching token balances:", error);
-            document.getElementById("profile-tokens").innerHTML = "<p>Error loading token balances</p>";
-          });
-
-        // Set Wallet QR Code
-        document.getElementById("wallet-qr").src = `/profile/${userId}/qr`;
+      const userData = JSON.parse(localStorage.getItem("token"));
+      if (!userData || !userData.uuid) {
+        return;
       }
 
-      function hideProfileModal() {
-        document.getElementById("profile-modal").classList.add("hidden");
+      const confirmWithdraw = confirm(`Withdraw ${amount} ${tokenSymbol}?`);
+      if (!confirmWithdraw) return;
+
+      try {
+        const response = await axios.post("/withdraw_tokens", {
+          uuid: userData.uuid,
+          token_address: tokenAddress,
+          amount: amount,
+        });
+
+      } catch (error) {
+        console.log(`Error: ${error.response?.data?.error || "Something went wrong!"}`);
+      }
+    }
+
+    async function withdrawETH() {
+      const amount = document.getElementById("withdraw-eth-amount").value;
+      if (amount <= 0) {
+        console.log("Invalid ETH withdrawal amount!");
+        return;
       }
 
-      // Switch profile modal tabs
-      function switchProfileTab(tab) {
-        const infoTab = document.getElementById("profile-info");
-        const tokensTab = document.getElementById("profile-tokens");
-        const walletTab = document.getElementById("profile-wallet");
-        const btnInfo = document.getElementById("profile-tab-info");
-        const btnTokens = document.getElementById("profile-tab-tokens");
-        const btnWallet = document.getElementById("profile-tab-wallet");
-
-        // Hide all tab contents and remove active state from all buttons
-        infoTab.classList.add("hidden");
-        tokensTab.classList.add("hidden");
-        walletTab.classList.add("hidden");
-        btnInfo.classList.remove("tab-active");
-        btnTokens.classList.remove("tab-active");
-        btnWallet.classList.remove("tab-active");
-
-        // Show the selected tab content and set the corresponding button as active
-        if (tab === "info") {
-          infoTab.classList.remove("hidden");
-          btnInfo.classList.add("tab-active");
-        } else if (tab === "tokens") {
-          tokensTab.classList.remove("hidden");
-          btnTokens.classList.add("tab-active");
-        } else if (tab === "wallet") {
-          walletTab.classList.remove("hidden");
-          btnWallet.classList.add("tab-active");
-        }
+      const userData = JSON.parse(localStorage.getItem("token"));
+      if (!userData || !userData.uuid) {
+        console.log("User not logged in!");
+        return;
       }
-    </script>
-  </body>
+
+      const confirmWithdraw = confirm(`Withdraw ${amount} ETH?`);
+      if (!confirmWithdraw) return;
+
+      try {
+        const response = await axios.post("/withdraw_eth", {
+          uuid: userData.uuid,
+          amount: amount,
+        });
+
+        console.log(`Success! TX Hash: ${response.data.transaction_hash}`);
+      } catch (error) {
+        console.log(`Error: ${error.response?.data?.error || "Something went wrong!"}`);
+      }
+    }
+
+    // Switch profile modal tabs
+    function switchProfileTab(tab) {
+      const infoTab = document.getElementById("profile-info");
+      const tokensTab = document.getElementById("profile-tokens");
+      const walletTab = document.getElementById("profile-wallet");
+      const btnInfo = document.getElementById("profile-tab-info");
+      const btnTokens = document.getElementById("profile-tab-tokens");
+      const btnWallet = document.getElementById("profile-tab-wallet");
+
+      // Hide all tab contents and remove active state from all buttons
+      infoTab.classList.add("hidden");
+      tokensTab.classList.add("hidden");
+      walletTab.classList.add("hidden");
+      btnInfo.classList.remove("tab-active");
+      btnTokens.classList.remove("tab-active");
+      btnWallet.classList.remove("tab-active");
+
+      // Show the selected tab content and set the corresponding button as active
+      if (tab === "info") {
+        infoTab.classList.remove("hidden");
+        btnInfo.classList.add("tab-active");
+      } else if (tab === "tokens") {
+        tokensTab.classList.remove("hidden");
+        btnTokens.classList.add("tab-active");
+      } else if (tab === "wallet") {
+        walletTab.classList.remove("hidden");
+        btnWallet.classList.add("tab-active");
+      }
+    }
+  </script>
+</body>
+
 </html>
