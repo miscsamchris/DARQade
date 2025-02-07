@@ -1,0 +1,12 @@
+Flask
+requests
+web3
+py-solc-x
+python-dotenv
+werkzeug
+qrcode
+pydantic
+cdp-langchain
+langchain-core
+langchain-openai
+langgraph

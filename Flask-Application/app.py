@@ -22,6 +22,16 @@ from pydantic import BaseModel, Field
 from typing import Union
 from datetime import datetime
 
+# Import necessary classes from your LangChain/CDP Agentkit setup.
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+
+from cdp_langchain.agent_toolkits import CdpToolkit
+from cdp_langchain.utils import CdpAgentkitWrapper
+
+# Global dictionary to store conversation sessions.
 dotenv.load_dotenv()
 install_solc("0.8.0")
 # Blockchain Connection
@@ -92,16 +102,7 @@ contract_interface = compiled_sol[next(iter(compiled_sol))]
 
 app = Flask(__name__)
 
-# Import necessary classes from your LangChain/CDP Agentkit setup.
-from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import create_react_agent
 
-from cdp_langchain.agent_toolkits import CdpToolkit
-from cdp_langchain.utils import CdpAgentkitWrapper
-
-# Global dictionary to store conversation sessions.
 game_test_sessions = {}
 
 
