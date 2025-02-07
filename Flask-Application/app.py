@@ -798,6 +798,71 @@ def initialize_agent():
     return agent_executor, config
 
 
+def initialize_agent_test():
+    """
+    Initialize the agent with CDP Agentkit.
+    Returns:
+        agent_executor: The ReAct agent instance.
+        config: A configuration dictionary.
+    """
+    # Initialize the LLM.
+
+    llm = ChatOpenAI(
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        base_url="https://nilai-a779.nillion.network/v1",
+        default_headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": "Bearer Nillion2025",
+        },
+    )
+    wallet_data_file = "wallet_data.txt"
+    wallet_data = None
+    if os.path.exists(wallet_data_file):
+        with open(wallet_data_file) as f:
+            wallet_data = f.read()
+
+    # Configure the CDP Agentkit.
+    values = {}
+    if wallet_data is not None:
+        values = {"cdp_wallet_data": wallet_data}
+
+    agentkit = CdpAgentkitWrapper(**values)
+
+    # Persist the agent's wallet data.
+    wallet_data = agentkit.export_wallet()
+    with open(wallet_data_file, "w") as f:
+        f.write(wallet_data)
+
+    # Initialize the CDP toolkit and select tools.
+    cdp_toolkit = CdpToolkit.from_cdp_agentkit_wrapper(agentkit)
+    tools = cdp_toolkit.get_tools()
+    all_tools = []
+
+    # Set up an in-memory buffer for conversation history.
+    memory = MemorySaver()
+    config = {"configurable": {"thread_id": "CDP Agentkit Chatbot Example!"}}
+
+    # Create the ReAct agent using the LLM, tools, and memory.
+    agent_executor = create_react_agent(
+        llm,
+        tools=all_tools,
+        checkpointer=memory,
+        state_modifier=(
+            "You are a helpful agent that can interact onchain using the Coinbase Developer Platform AgentKit. "
+            "You are empowered to interact onchain using your tools. If you ever need funds, you can request "
+            "them from the faucet if you are on network ID 'base-sepolia'. If not, you can provide your wallet "
+            "details and request funds from the user. Before executing your first action, get the wallet details "
+            "to see what network you're on. If there is a 5XX (internal) HTTP error code, ask the user to try "
+            "again later. If someone asks you to do something you can't do with your currently available tools, "
+            "you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, "
+            "recommending they go to docs.cdp.coinbase.com for more information. Be concise and helpful with your "
+            "responses. Refrain from restating your tools' descriptions unless it is explicitly requested. Do not use Any markdown notation like ** in the Response."
+        ),
+    )
+    return agent_executor, config
+
+
 @app.route("/start_game_test", methods=["POST"])
 def start_game_test():
     """
@@ -819,9 +884,9 @@ def start_game_test():
     if gamedev == {}:
         return jsonify({"error": "GameDev not found."}), 404
 
-    prompt_suffix = f"""\n Ignore the tools and focus on the Interactions"""
+    prompt_suffix = f"""\n Focus on the Game Prompts and on the Interactions. \n\nThe Winning Condition:\n{game.get("winning_condition")} """
     # Initialize a new agent instance.
-    agent_executor, config = initialize_agent()
+    agent_executor, config = initialize_agent_test()
 
     # Prime the conversation with the initial prompt.
     initial_response = ""
