@@ -98,7 +98,6 @@ Flask-Application/
 ```
 
 ## Demo
----------
 [![Demo Video](https://img.youtube.com/vi/fJdL2zpo2kw/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJdL2zpo2kw)
 ## Contact
 
