@@ -30,6 +30,9 @@ from langgraph.prebuilt import create_react_agent
 
 from cdp_langchain.agent_toolkits import CdpToolkit
 from cdp_langchain.utils import CdpAgentkitWrapper
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 # Global dictionary to store conversation sessions.
 dotenv.load_dotenv()
@@ -104,6 +107,13 @@ app = Flask(__name__)
 
 
 game_test_sessions = {}
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True,
+)
 
 
 @app.route("/gamedev/signup", methods=["POST"])
@@ -568,17 +578,11 @@ def create_game():
     # Get the file from the form (make sure the file input's name attribute is "Logo")
     logo_file = request.files.get("Logo")
     logo_filename = None
+    url = ""
     if logo_file:
         # Secure the filename
-        logo_filename = secure_filename(logo_file.filename)
-        # Define the upload folder path (adjust the path if necessary)
-        upload_folder = os.path.join(app.root_path, "static", "upload", myuuid)
-        # Create the upload folder if it doesn't exist
-        if not os.path.exists(upload_folder):
-            os.makedirs(upload_folder)
-        # Save the file to the upload folder
-        logo_file.save(os.path.join(upload_folder, logo_filename))
-
+        upload_result = cloudinary.uploader.upload(logo_file)
+        url = upload_result["secure_url"]
     # Optionally, you could pass the logo_filename to your upload_game function if needed.
     utils.token_gen.update_config()
     utils.upload_game(
@@ -590,7 +594,7 @@ def create_game():
         reward_in_tokens=float(data.get("reward_in_tokens")),
         card_type=int(data.get("card_type", "prompt")),
         developer_id=myuuid,
-        imagePath=logo_filename,
+        imagePath=url,
     )
 
     return redirect(url_for("dash"))  # Redirect to the dashboard page
@@ -788,7 +792,7 @@ def initialize_agent():
             "again later. If someone asks you to do something you can't do with your currently available tools, "
             "you must say so, and encourage them to implement it themselves using the CDP SDK + Agentkit, "
             "recommending they go to docs.cdp.coinbase.com for more information. Be concise and helpful with your "
-            "responses. Refrain from restating your tools' descriptions unless it is explicitly requested."
+            "responses. Refrain from restating your tools' descriptions unless it is explicitly requested. Do not use Any markdown notation like ** in the Response."
         ),
     )
     return agent_executor, config
@@ -815,10 +819,7 @@ def start_game_test():
     if gamedev == {}:
         return jsonify({"error": "GameDev not found."}), 404
 
-    prompt_suffix = f"""\nThe Winning Condition:\n{game.get("winning_condition")}  \n\n The Game Fee is {game.get("cost_in_eth")}. This is not needed for testing. 
-    The Reward for sucess is {game.get("reward_in_tokens")}.
-    The user UUID is {user_uuid}. This is important for the payment of the game fee.
-    The Token address for the reward is {gamedev["Token"]}."""
+    prompt_suffix = f"""\n Ignore the tools and focus on the Interactions"""
     # Initialize a new agent instance.
     agent_executor, config = initialize_agent()
 
