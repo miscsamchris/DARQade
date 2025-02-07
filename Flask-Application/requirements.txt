@@ -14,4 +14,3 @@ PyJWT
 ecdsa
 nilql
 gunicorn
-PIL
