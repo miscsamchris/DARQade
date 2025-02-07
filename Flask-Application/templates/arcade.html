@@ -724,7 +724,15 @@
     }
 
     function hideProfileModal() {
+      document.getElementById("profile-email").textContent = "Loading...";
+      document.getElementById("profile-basename").textContent = "Loading...";
+      document.getElementById("wallet-address").textContent = "Loading...";
+      document.getElementById("custodial-address").textContent = "Loading...";
+      document.getElementById("eth-balance").textContent = "Loading...";
       document.getElementById("profile-modal").classList.add("hidden");
+      const tokenList = document.querySelector("#profile-tokens ul");
+      tokenList.innerHTML = "";
+      document.getElementById("withdraw-eth-amount").value = "";
     }
 
     async function withdrawToken(tokenSymbol, tokenAddress) {
@@ -774,7 +782,7 @@
           uuid: userData.uuid,
           amount: amount,
         });
-
+        hideProfileModal();
         console.log(`Success! TX Hash: ${response.data.transaction_hash}`);
       } catch (error) {
         console.log(`Error: ${error.response?.data?.error || "Something went wrong!"}`);
