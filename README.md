@@ -42,7 +42,7 @@ DARQade is a revolutionary gaming platform that combines AI, blockchain technolo
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/darqade.git
+git clone https://github.com/miscsamchris/darqade.git
 cd darqade
 ```
 
@@ -58,8 +58,22 @@ cp .env.example .env
 
 4. Configure your `.env` file with the following variables:
 ```bash
-INFURA_KEY=your_infura_key
-PRIVATE_KEY=your_private_key
+INFURA_KEY
+PRIVATE_KEY
+ORG_SECRET_KEY
+ORG_DID
+NODE_A_URL
+NODE_A_DID
+NODE_B_URL
+NODE_B_DID
+NODE_C_URL
+NODE_C_DID
+CDP_API_KEY_NAME
+CDP_API_KEY_PRIVATE_KEY
+OPENAI_API_KEY
+CLOUDINARY_CLOUD_NAME
+CLOUDINARY_API_KEY
+CLOUDINARY_API_SECRET
 ```
 
 5. Run the application:
@@ -74,48 +88,20 @@ Flask-Application/
 ├── app.py              # Main application file
 ├── utils.py            # Utility functions
 ├── static/            
-│   ├── css/           # Stylesheets
-│   ├── js/            # JavaScript files
 │   └── images/        # Image assets
 ├── templates/
 │   ├── index.html     # Game developer interface
 │   └── user_index.html # Player interface
+│   └── dashboard.html # Game developer interface
+│   └── arcade.html # Player interface
 └── requirements.txt    # Python dependencies
 ```
-
-## API Endpoints
-
-### Game Developer Endpoints
-- `POST /gamedev/signup` - Register new game developer
-- `POST /gamedev/login` - Developer authentication
-- `POST /create_token` - Create game token
-- `POST /gamedev/create_game` - Create new game
-- `POST /release_game` - Update game status
-- `GET /gamedev/<uuid>/games` - Get developer's games
-
-### Player Endpoints
-- `POST /login` - Player authentication
-- `GET /arcade_games` - List available games
-- `POST /pay_game_fee` - Process game payments
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Contact
 
-For any inquiries, please reach out through the contact form on our website or create an issue in this repository.
+For any inquiries, please reach out through email:  infantsamchris@gmail.com
 
 ## Acknowledgments
-
 - Base Network for blockchain infrastructure
-- Coinbase Developer Platform for CDP integration
-- OpenAI for AI capabilities
+- Nillion for SecretVault Data Storage And the lightweight decentralized AI
+- Coinbase Developer Platform for CDP Wallet intergation through Agentkit
+- OpenAI & LangChain for setting the base for AI capabilities
