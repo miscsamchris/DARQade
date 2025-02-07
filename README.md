@@ -99,7 +99,7 @@ Flask-Application/
 
 ## Demo
 ---------
-[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/fJdL2zpo2kw/0.jpg)](https://www.youtube.com/watch?v=fJdL2zpo2kw)
+[![Demo Video](https://img.youtube.com/vi/fJdL2zpo2kw/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJdL2zpo2kw)
 ## Contact
 
 For any inquiries, please reach out through email:  infantsamchris@gmail.com
