@@ -55,6 +55,137 @@
       .tab-active {
         background-color: rgba(255, 255, 255, 0.2);
       }
+      
+      /* Carousel Styles */
+      .carousel-container {
+        position: relative;
+        width: 100%;
+        min-height: 600px; /* Increased height for a bigger carousel */
+      }
+    
+      .carousel-wrapper {
+        width: 100%;
+        overflow: hidden;
+      }
+    
+      .carousel-track {
+        display: flex;
+        transition: transform 0.5s ease-in-out;
+        width: 100%;
+      }
+    
+      .carousel-slide {
+        min-width: 100%;
+        flex: 0 0 100%;
+        display: flex;
+        background: rgba(26, 26, 46, 0.9);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+    
+      .game-details {
+        width: 50%;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Updated Game Images Styles */
+      .game-images {
+        position: relative;
+        width: 50%;
+        height: 600px; /* Match carousel height */
+      }
+      
+      /* Background image (game screenshot) positioned to appear within the arcade machine "screen" */
+      .game-image-bg {
+        position: absolute;
+        top: 29%;      /* Adjust vertical positioning */
+        left: 36%;     /* Adjust horizontal positioning */
+        width: 27%;    /* Adjust container width */
+        height: 27%;   /* Adjust container height */
+        z-index: 1;
+        overflow: hidden;
+      }
+      
+      /* Foreground image (arcade machine frame) fills the container */
+      .game-image-fg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+      }
+      
+      /* Specific styles for each image type */
+      .game-image-bg img {
+        width: 100%;
+        height: 100%;
+        object-fit: fill; /* Stretches the image to completely fill the container */
+      }
+      
+      .game-image-fg img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* Display the full foreground image without cropping */
+      }
+      
+      /* New Play Button Styling */
+      .play-button {
+        position: absolute;
+        top: 80%;           /* Adjust vertical position as needed */
+        left: 50%;          /* Center horizontally */
+        transform: translate(-50%, -50%);
+        z-index: 3;
+        background-color: #4f46e5; /* Tailwind Indigo-600 */
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-family: "Press Start 2P", cursive;
+        transition: background-color 0.3s;
+      }
+      
+      .play-button:hover {
+        background-color: #4338ca; /* Tailwind Indigo-700 */
+      }
+      
+      .carousel-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s;
+        z-index: 10;
+      }
+    
+      .carousel-nav-btn:hover {
+        background: rgba(0, 0, 0, 0.75);
+      }
+    
+      .carousel-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+    
+      .carousel-dot.active {
+        background: white;
+      }
     </style>
   </head>
 
@@ -80,18 +211,34 @@
       </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto pt-20 pb-10 px-4 sm:px-6 lg:px-8">
-      <!-- Large My Game Library Section -->
-      <section class="glass p-6 mb-8">
+    <!-- Game Carousel Section -->
+    <section class="game-carousel-section max-w-7xl mx-auto pt-20 pb-10 px-4 sm:px-6 lg:px-8">
+      <div class="glass p-6 mb-8">
         <h2 class="text-2xl font-bold mb-6 text-center">My Game Library</h2>
-        <!-- Games will be loaded dynamically into this responsive grid -->
-        <div id="game-library" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Game cards will be dynamically injected here -->
+        
+        <div class="carousel-container relative">
+          <div id="game-carousel" class="carousel-wrapper">
+            <div class="carousel-track">
+              <!-- Games will be dynamically inserted here -->
+            </div>
+          </div>
+          
+          <!-- Navigation Buttons -->
+          <button id="prevBtn" class="carousel-nav-btn left-4">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button id="nextBtn" class="carousel-nav-btn right-4">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          
+          <!-- Dots navigation -->
+          <div id="carousel-dots" class="flex justify-center mt-4 space-x-2">
+            <!-- Dots will be dynamically inserted here -->
+          </div>
         </div>
-      </section>
-    </main>
-
+      </div>
+    </section>
+    
     <!-- Chat Modal -->
     <div
       id="chat-modal"
@@ -134,13 +281,13 @@
       <div class="glass relative rounded-xl border border-indigo-600/30 p-6 w-11/12 max-w-3xl min-h-[500px] flex flex-col">
         <!-- Close Button -->
         <div class="flex justify-end mb-4">
-            <button
-              onclick="hideProfileModal()"
-              class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded focus:outline-none"
-            >
-              Close
-            </button>
-          </div>
+          <button
+            onclick="hideProfileModal()"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded focus:outline-none"
+          >
+            Close
+          </button>
+        </div>
         <!-- Tab Buttons -->
         <div class="flex mb-4">
           <button id="profile-tab-info" class="profile-tab-btn tab-active rounded-l px-4 py-2" onclick="switchProfileTab('info')">
@@ -161,8 +308,6 @@
             <p>Email: <span id="profile-email">Loading...</span></p>
             <p>BaseName: <span id="profile-basename">Loading...</span></p>
             <p>Wallet Address: <span id="wallet-address">Loading...</span></p>
-
-            <!-- You can display additional fields (for example, custodial) if desired -->
           </div>
           <!-- Token Balances Content -->
           <div id="profile-tokens" class="profile-tab-content hidden">
@@ -174,12 +319,10 @@
           <!-- Wallet Content -->
           <div id="profile-wallet" class="profile-tab-content hidden">
             <h3 class="text-xl font-bold mb-4">Wallet Information</h3>
-            <!-- If you need an ETH balance from another source, you could update it here -->
             <p>ETH Balance: <span id="eth-balance">0</span> ETH</p>
             <p>Custodial Wallet Address: <span id="custodial-address">Loading...</span></p>
             <div class="mt-4">
               <h4 class="font-bold mb-2">QR Code:</h4>
-              <!-- The QR code is now provided by the backend endpoint -->
               <img id="wallet-qr" src="" alt="Wallet QR Code" class="w-48 h-48 object-contain">
             </div>
           </div>
@@ -204,48 +347,132 @@
         try {
           const response = await axios.get("/arcade_games");
           const games = response.data;
-          populateGameLibrary(games);
+          gameCarousel.populateCarousel(games);
         } catch (error) {
           console.error("Error fetching arcade games:", error);
-          const library = document.getElementById("game-library");
+          const library = document.querySelector('.carousel-track');
           library.innerHTML = `<p class="text-center text-red-400 w-full">Error loading games.</p>`;
         }
       }
 
       /**
-       * Populate the game library grid with game cards.
-       * Assumes each game object has properties: id, title, imagePath, description, and game_developer.
+       * Populate the game library carousel with game slides.
        */
-      function populateGameLibrary(games) {
-        const libraryContainer = document.getElementById("game-library");
-        libraryContainer.innerHTML = "";
-
-        if (!games || games.length === 0) {
-          libraryContainer.innerHTML = `<p class="text-center text-gray-400 w-full">No released games found.</p>`;
-          return;
+      class GameCarousel {
+        constructor() {
+          this.currentIndex = 0;
+          this.carousel = document.querySelector('.carousel-track');
+          this.games = [];
+          this.setupEventListeners();
         }
-
-        games.forEach((game) => {
-          const card = document.createElement("div");
-          card.className = "glass p-4 flex flex-col";
-          card.innerHTML = `
-            <img src="/static/upload/${game.game_developer}/${game.imagePath}" alt="${game.title}" class="w-full h-48 object-cover rounded-md mb-4">
-            <h3 class="text-xl font-bold mb-2">${game.title}</h3>
-            <p class="text-sm flex-grow mb-4">${game.description}</p>
-            <button
-              class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md"
-              onclick="openChatModal('${game.uid}')"
-            >
-              Play Now
-            </button>
+      
+        setupEventListeners() {
+          document.getElementById('prevBtn').addEventListener('click', () => this.prevSlide());
+          document.getElementById('nextBtn').addEventListener('click', () => this.nextSlide());
+      
+          // Add keyboard navigation
+          document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') this.prevSlide();
+            if (e.key === 'ArrowRight') this.nextSlide();
+          });
+        }
+      
+        populateCarousel(games) {
+          this.games = games;
+          this.carousel.innerHTML = '';
+          const dotsContainer = document.getElementById('carousel-dots');
+          dotsContainer.innerHTML = '';
+      
+          games.forEach((game, index) => {
+            // Create carousel slide
+            const slide = this.createSlide(game);
+            this.carousel.appendChild(slide);
+      
+            // Create dot
+            const dot = document.createElement('button');
+            dot.className = `carousel-dot ${index === 0 ? 'active' : ''}`;
+            dot.addEventListener('click', () => this.goToSlide(index));
+            dotsContainer.appendChild(dot);
+          });
+      
+          this.updateCarousel();
+        }
+      
+        createSlide(game) {
+          const slide = document.createElement('div');
+          slide.className = 'carousel-slide';
+          
+          slide.innerHTML = `
+            <div class="game-details">
+              <h3 class="text-2xl font-bold mb-4">${game.title}</h3>
+              <p class="text-gray-300 mb-6">${game.description}</p>
+              <div class="mb-6">
+                <p class="text-sm text-gray-400">Developer</p>
+                <p class="text-lg">${game.game_developer}</p>
+              </div>
+              <div class="mb-6">
+                <p class="text-sm text-gray-400">Entry Fee to Play</p>
+                <p class="text-lg">${game.cost_in_eth}</p>
+              </div>
+              <div class="mb-6">
+                <p class="text-sm text-gray-400">Winning Prize</p>
+                <p class="text-lg">${game.reward_in_token}</p>
+              </div>
+            </div>
+            <div class="game-images">
+              <div class="game-image-bg">
+                <img src="/static/upload/${game.game_developer}/${game.imagePath}" 
+                     alt="${game.title}" 
+                     class="game-image">
+              </div>
+              <div class="game-image-fg">
+                <img src="/static/images/MachineBG.png" 
+                     alt="${game.title}" 
+                     class="game-image">
+              </div>
+              <button class="play-button" onclick="openChatModal('${game.uid}')">Play Now</button>
+            </div>
           `;
-          libraryContainer.appendChild(card);
-        });
+      
+          return slide;
+        }
+      
+        updateCarousel() {
+          const offset = -this.currentIndex * 100;
+          this.carousel.style.transform = `translateX(${offset}%)`;
+          
+          // Update dots
+          const dots = document.querySelectorAll('.carousel-dot');
+          dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === this.currentIndex);
+          });
+        }
+      
+        nextSlide() {
+          this.currentIndex = (this.currentIndex + 1) % this.games.length;
+          this.updateCarousel();
+        }
+      
+        prevSlide() {
+          this.currentIndex = (this.currentIndex - 1 + this.games.length) % this.games.length;
+          this.updateCarousel();
+        }
+      
+        goToSlide(index) {
+          this.currentIndex = index;
+          this.updateCarousel();
+        }
       }
-
+      
+      // Initialize carousel and fetch arcade games on DOM content loaded
+      let gameCarousel;
+      document.addEventListener('DOMContentLoaded', () => {
+        gameCarousel = new GameCarousel();
+        fetchArcadeGames();
+      });
+      
       /**
        * Opens the chat modal and starts a game test session.
-       * Since the updated endpoint expects a user_uuid as input, we read the user's UUID from localStorage.
        */
       function openChatModal(gameId) {
         document.getElementById("chat-modal").classList.remove("hidden");
@@ -297,9 +524,7 @@
         const chatMessages = document.getElementById("chat-messages");
         const messageDiv = document.createElement("div");
         messageDiv.className = sender === "user" ? "text-right mb-2" : "text-left mb-2";
-        messageDiv.innerHTML = `<span class="px-2 py-1 rounded ${
-          sender === "user" ? "bg-blue-600" : "bg-gray-500"
-        }">${message}</span>`;
+        messageDiv.innerHTML = `<span class="px-2 py-1 rounded ${sender === "user" ? "bg-blue-600" : "bg-gray-500"}">${message}</span>`;
         chatMessages.appendChild(messageDiv);
         // Scroll to the bottom.
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -347,11 +572,8 @@
         window.location.href = "/";
       });
 
-      // Fetch arcade games when the DOM is loaded.
-      document.addEventListener("DOMContentLoaded", fetchArcadeGames);
-
       // -------------------------------
-      // My Profile Modal Functions (modified to use endpoints)
+      // My Profile Modal Functions
       // -------------------------------
 
       function showProfileModal() {
@@ -360,13 +582,12 @@
           alert("User not logged in");
           return;
         }
-        // Use the stored user UUID as the user_id for the endpoints.
         const userId = token.uuid;
 
         // Show the profile modal.
         document.getElementById("profile-modal").classList.remove("hidden");
 
-        // --- Fetch Profile Info ---
+        // Fetch Profile Info
         axios.get(`/profile/${userId}/info`)
           .then(response => {
             const data = response.data;
@@ -383,14 +604,12 @@
             document.getElementById("wallet-address").textContent = "Error";
           });
 
-        // --- Fetch Token Balances ---
-        // (Note: Here we assume that the token balances endpoint has been updated to '/profile/<user_id>/tokens'
-        //  so it does not conflict with the info endpoint.)
+        // Fetch Token Balances
         axios.get(`/profile/${userId}/tokens`)
           .then(response => {
             const tokens = response.data;
             const tokenList = document.querySelector("#profile-tokens ul");
-            tokenList.innerHTML = ""; // Clear any existing list items.
+            tokenList.innerHTML = "";
             tokens.forEach(tk => {
               const li = document.createElement("li");
               li.textContent = `${tk.Symbol}: ${tk.balance}`;
@@ -402,8 +621,7 @@
             document.getElementById("profile-tokens").innerHTML = "<p>Error loading token balances</p>";
           });
 
-        // --- Set Wallet QR Code ---
-        // The backend will generate and return a QR code image for the user's wallet.
+        // Set Wallet QR Code
         document.getElementById("wallet-qr").src = `/profile/${userId}/qr`;
       }
 

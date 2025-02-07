@@ -13,7 +13,6 @@ import requests
 from web3 import Web3
 from solcx import compile_source, install_solc
 import math
-import datetime
 import dotenv, os
 import utils
 from werkzeug.utils import secure_filename
@@ -21,6 +20,7 @@ import json, qrcode, io
 from cdp_langchain.tools import CdpTool
 from pydantic import BaseModel, Field
 from typing import Union
+from datetime import datetime
 
 dotenv.load_dotenv()
 install_solc("0.8.0")
@@ -35,6 +35,7 @@ web3.eth.default_account = admin.address
 # Blockscout API URL
 BLOCKSCOUT_API_URL = "https://base.blockscout.com/api/v2/search/quick?q="
 
+BLOCKSCOUT_API_URL_GET_BASENAME = "https://base.blockscout.com/api/v2/tokens/0x03c4738Ee98aE44591e1A4A4F3CaB6641d95DD9a/instances?holder_address_hash={}"
 # ERC-20 Solidity Contract (Without OpenZeppelin)
 ERC20_SOURCE = """
 // SPDX-License-Identifier: MIT
@@ -88,7 +89,6 @@ contract ERC20Token {
 
 compiled_sol = compile_source(ERC20_SOURCE, solc_version="0.8.0")
 contract_interface = compiled_sol[next(iter(compiled_sol))]
-
 
 app = Flask(__name__)
 
@@ -167,6 +167,26 @@ def gamedev_signup():
         ),
         201,
     )
+
+
+def get_unique_basenames(wallet_addresses):
+    unique_basenames = set()
+    for address in wallet_addresses:
+        try:
+            response = requests.get(BLOCKSCOUT_API_URL_GET_BASENAME.format(address))
+            if response.status_code == 200:
+                data = response.json()
+                for item in data.get("items", []):
+                    basename = item.get("metadata", {}).get("name")
+                    if basename:
+                        unique_basenames.add(basename)
+            else:
+                print(
+                    f"Failed to fetch data for {address}, Status Code: {response.status_code}"
+                )
+        except Exception as e:
+            print(f"Error fetching data for {address}: {e}")
+    return list(unique_basenames)
 
 
 def get_wallet_from_uuid(myuuid):
@@ -509,6 +529,7 @@ def create_game():
         title=data.get("game_title"),
         description=data.get("game_description"),
         prompt=data.get("prompt"),
+        winning_condition=data.get("winning_condition"),
         cost_in_eth=float(data.get("cost_in_eth")),
         reward_in_tokens=float(data.get("reward_in_tokens")),
         card_type=int(data.get("card_type", "prompt")),
@@ -535,6 +556,7 @@ def release_game():
         game["title"],
         game["description"],
         game["prompt"],
+        game["winning_condition"],
         game["cost_in_eth"],
         game["reward_in_tokens"],
         game["game_type"],
@@ -612,6 +634,11 @@ def home():
 @app.route("/DARQade")
 def arcade():
     return render_template("arcade.html")
+
+
+@app.route("/test")
+def test():
+    return render_template("test.html")
 
 
 @app.route("/Gamedev/Dashboard")
@@ -732,7 +759,7 @@ def start_game_test():
     if gamedev == {}:
         return jsonify({"error": "GameDev not found."}), 404
 
-    prompt_suffix = f"""\n\n The Game Fee is {game.get("cost_in_eth")}. This is not needed for testing. 
+    prompt_suffix = f"""\nThe Winning Condition:\n{game.get("winning_condition")}  \n\n The Game Fee is {game.get("cost_in_eth")}. This is not needed for testing. 
     The Reward for sucess is {game.get("reward_in_tokens")}.
     The user UUID is {user_uuid}. This is important for the payment of the game fee.
     The Token address for the reward is {gamedev["Token"]}."""
@@ -784,7 +811,7 @@ def start_game():
     gamedev = utils.get_gamedev_by_id(game["game_developer"])
     if gamedev == {}:
         return jsonify({"error": "GameDev not found."}), 404
-    prompt_suffix = f"""\n\n The amount is {game.get("cost_in_eth")} and the recipient_wallet is  {gamedev.get("Wallet Address")}. You need to deduct this on the start of the game everytime. This is absolutely important.
+    prompt_suffix = f"""\nThe Winning Condition:\n{game.get("winning_condition")}  \n\n The amount is {game.get("cost_in_eth")} and the recipient_wallet is  {gamedev.get("Wallet Address")}. You need to deduct this on the start of the game everytime. This is absolutely important.
     The Reward for sucess is {game.get("reward_in_tokens")}. You need to add this to the user's wallet in case the user won. You need to use the transfer_token tool for this. 
     The Game Developer uuid is {game["game_developer"]}.
     The user UUID is {user_uuid}. This is important for the payment of the game fee.
@@ -932,6 +959,17 @@ def wallet_qr(user_id):
     response.headers["Content-Disposition"] = "attachment; filename=QRcode.png"
     response.mimetype = "image/png"
     return response
+
+
+@app.route("/get_basenames", methods=["POST"])
+def get_basenames():
+    data = request.json
+    if not data or "wallet_addresses" not in data:
+        return jsonify({"error": "Missing wallet_addresses parameter"}), 400
+
+    wallet_addresses = data["wallet_addresses"]
+    unique_basenames = get_unique_basenames(wallet_addresses)
+    return jsonify({"unique_basenames": unique_basenames})
 
 
 if __name__ == "__main__":

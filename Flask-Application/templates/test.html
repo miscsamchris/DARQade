@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+</head>
+
+<body>
+    <div class="row main-content">
+        <div class="container card" style="color: white!important;">
+
+            <br>
+            <br>
+            <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"
+                type="application/javascript"></script>
+
+            <h3 class="title" style="text-align: center;">Login</h3>
+            <div class="col-md-12 form-img card-body ">
+                <form method="POST" action="#" style="width: 50%;margin-left : 25%;">
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="text" name="username" placeholder="UserName"
+                                autofocus="">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="password" name="password" placeholder="Password">
+                        </div>
+                    </div>
+                    <center><button class="btn btn-success font-weight-bold" type="submit">Login</button></center>
+                </form>
+                <br>
+                <center><button class="btn btn-success font-weight-bold" id="auth-metamask">Wallet Connect
+                        Login</button>
+                </center>
+            </div>
+            <br>
+            <br>
+            <h3 class="title" style="text-align: center;">Register Account</h3>
+            <div class="col-md-12 form-img card-body ">
+                <form method="POST" action="#" style="width: 50%;margin-left : 25%;">
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="text" name="username" placeholder="User Name"
+                                autofocus="" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="text" name="useremail" placeholder="User Email"
+                                required autofocus="">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="text" name="useraddress" id="useraddress"
+                                required placeholder="Avalanche Address" autofocus="" disabled>
+                        </div>
+                        <div class="col">
+                            <button class="btn btn-success font-weight-bold" type="button"
+                                id="auth-metamask-signup">Connect
+                                Wallet</button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col">
+                            <input class="form-control input-lg" type="password" required name="password"
+                                placeholder="Password">
+                        </div>
+                    </div>
+                    <center><button class="btn btn-success font-weight-bold" type="submit">Register</button></center>
+                </form>
+            </div>
+            <script>
+                const elBtnMetamasksignup = document.getElementById('auth-metamask-signup');
+                const useraddressinput = document.getElementById('useraddress');
+                const handleApiPost = async (endpoint, params) => {
+                    const result = await axios.post(`${endpoint}`, params, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    console.log(result.data)
+                    return result.data;
+                };
+
+
+
+                const connectToMetamask = async () => {
+                    const provider = new ethers.BrowserProvider(window.ethereum);
+                    const [accounts, chainId] = await Promise.all([
+                        provider.send('eth_requestAccounts', []),
+                        provider.send('eth_chainId', []),
+                    ]);
+
+                    const signer = provider.getSigner();
+                    console.log("accounts", accounts, "chainId", chainId)
+                    return { signer, chain: chainId, account: accounts[0] };
+                };
+
+                const createAccount = async () => {
+                    // Connect to Metamask
+                    const { signer, chain, account } = await connectToMetamask();
+                    console.log("account", account, "chain", chain)
+
+                    if (!account) {
+                        throw new Error('No account found');
+                    }
+                    if (!chain) {
+                        throw new Error('No chain found');
+                    }
+                    useraddressinput.value = account;
+                };
+
+                function init() {
+                    elBtnMetamasksignup.addEventListener('click', async () => {
+                        createAccount().catch((error) => console.log(error));
+                    });
+                }
+
+                window.addEventListener('load', () => {
+                    init();
+                });
+
+            </script>
+        </div>
+    </div>
+</body>
+
+</html>

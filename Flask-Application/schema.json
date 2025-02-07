@@ -124,6 +124,9 @@
                 "prompt": {
                     "type": "string"
                 },
+                "winning_condition": {
+                    "type": "string"
+                },
                 "cost_in_eth": {
                     "type": "number",
                     "minimum": 0
@@ -164,6 +167,7 @@
                 "game_type",
                 "revenue",
                 "players",
+                "winning_condition",
                 "game_developer"
             ],
             "additionalProperties": false
