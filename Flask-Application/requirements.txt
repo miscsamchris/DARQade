@@ -4,7 +4,7 @@ web3
 py-solc-x
 python-dotenv
 werkzeug
-qrcode
+qrcode[PIL]
 pydantic
 cdp-langchain
 langchain-core
@@ -14,3 +14,4 @@ PyJWT
 ecdsa
 nilql
 gunicorn
+PIL
