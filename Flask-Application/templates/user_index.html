@@ -7,6 +7,7 @@
   <title>DARQade – Where Gamers Earn!</title>
   <link rel="icon" type="image/x-icon" href='{{ url_for("static", filename="images/favicon.ico") }}'>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
   <style>
@@ -346,7 +347,7 @@
               <option value="" disabled selected>Select Base Name</option>
               <!-- Options to be added dynamically -->
             </select>
-            <button id="wallet-connect" class="bg-green-500 hover:bg-green-700 text-white px-4 py-2 rounded">
+            <button id="wallet-connect" class="bg-green-500 hover:bg-green-700 text-white px-4 py-2 rounded h-full">
               Connect Wallet
             </button>
           </div>
@@ -375,6 +376,7 @@
 
   <!-- Scripts -->
   <script>
+    const elBtnMetamasksignup = document.getElementById('wallet-connect');
     const connectToMetamask = async () => {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const [accounts, chainId] = await Promise.all([
@@ -386,7 +388,7 @@
       console.log("accounts", accounts, "chainId", chainId)
       return { signer, chain: chainId, accounts: accounts };
     };
-    const getBaseNames = async (walletAddresses) => {
+    const get_BaseNames = async (walletAddresses) => {
       try {
         const endpoint = "{{url_for('get_basenames')}}";
         const params = { wallet_addresses: walletAddresses };
@@ -404,23 +406,45 @@
         return [];
       }
     };
-    const createAccount = async () => {
+    const get_wallet_information = async () => {
       // Connect to Metamask
+      elBtnMetamasksignup.disabled = true;
+      elBtnMetamasksignup.innerText = "Connecting...";
       const { signer, chain, accounts } = await connectToMetamask();
-      const basenames = await getBaseNames();
 
-      if (!account) {
+      if (!accounts) {
         throw new Error('No account found');
       }
       if (!chain) {
         throw new Error('No chain found');
       }
+      const basenames = await get_BaseNames(accounts);
+      console.log("basenames", basenames);
+      elBtnMetamasksignup.disabled = false;
+      elBtnMetamasksignup.innerText = "Connect Wallet";
+      const selectBaseName = document.getElementById("signup-basename");
+      selectBaseName.innerHTML = ""; // Clear previous options
+
+      // Add a default disabled option
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "Select Base Name";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+      selectBaseName.appendChild(defaultOption);
+
+      // Append fetched basenames
+      basenames.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        selectBaseName.appendChild(option);
+      });
     };
 
     function init() {
-      const elBtnMetamasksignup = document.getElementById('wallet-connect');
       elBtnMetamasksignup.addEventListener('click', async () => {
-        createAccount().catch((error) => console.log(error));
+        get_wallet_information().catch((error) => console.log(error));
       });
     }
 
@@ -501,9 +525,12 @@
         // Store response data in localStorage when the user logs in
         if (!isSignup && response.ok) {
           localStorage.setItem("token", JSON.stringify(result));
+          window.location.href = "{{url_for('arcade')}}";
+        }
+        else {
+          window.location.reload();
         }
         document.getElementById('message').textContent = result.message || result.error;
-        window.location.href = "{{url_for('arcade')}}";
       } catch (error) {
         document.getElementById('message').textContent = "An error occurred. Please try again.";
       }
