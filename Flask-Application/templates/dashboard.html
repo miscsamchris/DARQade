@@ -158,7 +158,7 @@
             </div>
             <div class="flex">
                 <input id="chat-input" type="text" placeholder="Type a message..."
-                    class="flex-grow p-2 rounded-l-md border border-gray-600 focus:outline-none">
+                    class="flex-grow p-2 rounded-l-md border border-gray-600 bg-black focus:outline-none">
                 <button id="chat-send-button"
                     class="p-2 bg-indigo-600 text-white rounded-r-md hover:bg-indigo-700 focus:outline-none">Send</button>
             </div>
@@ -289,7 +289,10 @@
                 return [];
             }
         }
-
+        function roundDown(number, decimals) {
+            decimals = decimals || 0;
+            return (Math.floor(number * Math.pow(10, decimals)) / Math.pow(10, decimals));
+        }
         // Populate the games table with an additional Logo column
         function populateGameTable(games, userUUID) {
             list_games = games.Games;
@@ -317,7 +320,7 @@
             <div class="text-sm text-gray-300">${game.description}</div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
-            <div class="text-sm text-white">${game.revenue} ETH</div>
+            <div class="text-sm text-white">${roundDown(game.revenue, 6)} ETH</div>
           </td>
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="text-sm text-white">${game.status}</div>

@@ -51,11 +51,9 @@ class NilDBAPI:
             }
 
             body = {"schema": schema_id, "data": payload}
-            print(f" Headers {headers}\n", f"Body {body}")
             response = requests.post(
                 f"{node['url']}/api/v1/data/create", headers=headers, json=body
             )
-            print(response.json())
             return (
                 response.status_code == 200
                 and response.json().get("data", {}).get("errors", []) == []
@@ -83,7 +81,6 @@ class NilDBAPI:
                 "filter": filter_dict,
                 "update": {"$set": update_dict},
             }
-            print(body)
             response = requests.post(
                 f"{node['url']}/api/v1/data/update", headers=headers, json=body
             )
@@ -199,7 +196,6 @@ class NilDBAPI:
             )
 
             if response.status_code == 200 and response.json().get("errors", []) == []:
-                print(f"Schema created successfully on {node_name}.")
                 return response.json().get("data", [])
             else:
                 print(
@@ -392,7 +388,6 @@ def upload_user(
                 "private_key": encrypted_private_key_shares[i],
             }
 
-            print(schema_manager.schema_ids)
             if not nildb_api.data_upload(
                 node_name, schema_manager.schema_ids["User"], [user_data]
             ):
@@ -414,7 +409,6 @@ def fetch_users() -> List[Dict]:
             node_users = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["User"]
             )
-            print("node_users", node_users)
             for user in node_users:
                 user_id = user["_id"]
                 if user_id not in users:
@@ -474,7 +468,6 @@ def login_user(email: str, password: str) -> Dict:
             node_users = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["User"], filter_dict
             )
-            print("Filtered Users:", node_users)
 
             for user in node_users:
                 user_id = user["_id"]
@@ -545,7 +538,6 @@ def get_user_by_id(_id: str) -> Dict:
             node_users = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["User"], filter_dict
             )
-            print("Filtered Users:", node_users)
 
             for user in node_users:
                 user_id = user["_id"]
@@ -644,8 +636,6 @@ def fetch_tokens() -> List[Dict]:
             node_tokens = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Token"]
             )
-            print("Fetched Tokens:", node_tokens)
-
             for token in node_tokens:
                 token_id = token["_id"]
                 if token_id not in tokens:
@@ -676,8 +666,6 @@ def get_token(symbol: str) -> Dict:
             node_tokens = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Token"], filter_dict
             )
-            print("Filtered Tokens:", node_tokens)
-
             for token in node_tokens:
                 token_id = token["_id"]
                 if token_id not in tokens:
@@ -712,7 +700,6 @@ def get_token_by_gamedev_wallet(wallet: str) -> Dict:
             node_tokens = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Token"], filter_dict
             )
-            print("Filtered Tokens:", node_tokens)
 
             for token in node_tokens:
                 token_id = token["_id"]
@@ -794,7 +781,6 @@ def fetch_gamedevs() -> List[Dict]:
             node_gamedevs = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["GameDeveloper"]
             )
-            print("Fetched GameDevs:", node_gamedevs)
 
             for gamedev in node_gamedevs:
                 gamedev_id = gamedev["_id"]
@@ -828,7 +814,6 @@ def login_gamedev(email: str, password: str) -> Dict:
             node_gamedevs = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
             )
-            print("Filtered GameDevs:", node_gamedevs)
 
             for gamedev in node_gamedevs:
                 gamedev_id = gamedev["_id"]
@@ -909,7 +894,6 @@ def get_gamedev_by_id(uid: str) -> Dict:
             node_gamedevs = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
             )
-            print("Filtered GameDevs:", node_gamedevs)
 
             for gamedev in node_gamedevs:
                 gamedev_id = gamedev["_id"]
@@ -987,7 +971,6 @@ def get_gamedev_by_wallet(wallet: str) -> Dict:
             node_gamedevs = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["GameDeveloper"], filter_dict
             )
-            print("Filtered GameDevs:", node_gamedevs)
 
             for gamedev in node_gamedevs:
                 gamedev_id = gamedev["_id"]
@@ -1203,7 +1186,6 @@ def fetch_games() -> List[Dict]:
             node_games = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Game"]
             )
-            print("Fetched Games:", node_games)
 
             for game in node_games:
                 game_id = game["_id"]
@@ -1240,7 +1222,6 @@ def get_game(uid: str) -> Dict:
             node_games = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Game"], filter_dict
             )
-            print("Filtered Games:", node_games)
 
             for game in node_games:
                 game_id = game["_id"]
@@ -1281,7 +1262,6 @@ def get_games_by_gamedev(gamedev_id: str) -> Dict:
             node_games = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Game"], filter_dict
             )
-            print("Filtered Games:", node_games)
 
             for game in node_games:
                 game_id = game["_id"]
@@ -1323,8 +1303,6 @@ def get_games_by_status(status: str) -> Dict:
             node_games = nildb_api.data_read(
                 node_name, schema_manager.schema_ids["Game"], filter_dict
             )
-            print("Filtered Games:", node_games)
-
             for game in node_games:
                 game_id = game["_id"]
                 if game_id not in games:
