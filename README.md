@@ -96,6 +96,10 @@ Flask-Application/
 │   └── arcade.html # Player interface
 └── requirements.txt    # Python dependencies
 ```
+
+## Demo
+---------
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/fJdL2zpo2kw/0.jpg)](https://www.youtube.com/watch?v=fJdL2zpo2kw)
 ## Contact
 
 For any inquiries, please reach out through email:  infantsamchris@gmail.com
