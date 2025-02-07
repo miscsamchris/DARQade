@@ -5,23 +5,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DARQade - DARQ Tech Arcade</title>
-    <link rel="icon" type="image/x-icon" href='{{url_for("static", filename="images/favicon.ico")}}''>
+    <link rel="icon" type="image/x-icon" href='{{url_for("static", filename="images/favicon.ico")}}'>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <style>
-        @import url(' https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap'); @import
-        url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap'); :root {
-        scroll-behavior: smooth; } body, html { margin: 0; padding: 0; height: 100%; } .game-font {
-        font-family: 'Press Start 2P' , cursive; } .future-font { font-family: 'Orbitron' , sans-serif; }
-        .full-screen-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; position:
-        relative; } .gradient-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%); } .glass
-        { background: rgba(26, 26, 46, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(79, 70, 229, 0.3); }
-        .neon-text { text-shadow: 0 0 10px rgba(79, 70, 229, 0.7), 0 0 20px rgba(79, 70, 229, 0.5); } .parallax {
-        background-attachment: fixed; background-position: center; background-repeat: no-repeat; background-size: cover;
-        } /* Scrollbar Styling */ ::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-track { background: #16213e;
-        } ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 5px; } ::-webkit-scrollbar-thumb:hover {
-        background: #6366f1; } </style>
+        @import url(' https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
+
+        :root {
+            scroll-behavior: smooth;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .game-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .future-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .full-screen-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position:
+                relative;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+        }
+
+        .glass {
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(79, 70, 229, 0.3);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(79, 70, 229, 0.7), 0 0 20px rgba(79, 70, 229, 0.5);
+        }
+
+        .parallax {
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #16213e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4f46e5;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+        }
+    </style>
 </head>
 
 <body class="bg-black text-white">
