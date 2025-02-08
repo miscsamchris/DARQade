@@ -250,7 +250,7 @@ class TransferTokenInput(BaseModel):
 
 
 ########################################
-# 6. ETH Balance Tool
+# 1. ETH Balance Tool
 ########################################
 def eth_balance_tool(wallet_address: str) -> str:
     """
@@ -272,7 +272,7 @@ def eth_balance_tool(wallet_address: str) -> str:
 
 
 ########################################
-# 8. Pay Game Fee Tool
+# 2. Pay Game Fee Tool
 ########################################
 def pay_game_fee_tool(
     user_uuid: str, amount: float, recipient_wallet: str, game_id: str
@@ -353,7 +353,9 @@ def pay_game_fee_tool(
         {"message": "Game fee paid", "transaction_hash": web3.to_hex(tx_hash)}
     )
 
-
+########################################
+# 3. Transfer Token Tool
+########################################
 def transfer_token_tool(
     token_address: str, user_uuid: str, amount: float, gamedev_uuid: str
 ) -> str:
