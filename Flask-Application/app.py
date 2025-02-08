@@ -800,7 +800,7 @@ def initialize_agent():
 
 def initialize_agent_test():
     """
-    Initialize the agent with CDP Agentkit.
+    Initialize the agent with CDP Agentkit using Nillion AI.
     Returns:
         agent_executor: The ReAct agent instance.
         config: A configuration dictionary.

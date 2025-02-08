@@ -99,6 +99,23 @@ Flask-Application/
 
 ## Demo
 [![Demo Video](https://img.youtube.com/vi/fJdL2zpo2kw/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJdL2zpo2kw)
+
+## Onchain Transactions
+
+### Smart Contracts
+ - https://sepolia.basescan.org/address/0x37f0f4a2e1c769d6a0b39d9e5ec554263a36b615#tokentxns
+ - https://sepolia.basescan.org/address/0xa6dd15296f7dd0ffd3d2ab776e460f94787589f9#tokentxns
+
+### AI Token Prize Distribution
+ - https://sepolia.basescan.org/tx/0x420f1e6f5c883bf5837888b3a1d5753bc1323650af7ce0cb26217d013c51a960
+ - https://sepolia.basescan.org/tx/0x51baae09e2395d20448ede2cb96dc0c753546b492521fbae3f6ad3c64827a082
+ - https://sepolia.basescan.org/tx/0x3fa15d96b72563eea5cba47c9bf23560cacd5c993a624c48de5ca896ab438063
+ - https://sepolia.basescan.org/tx/0x6de85cf23912f87f0283bbf97f127b0b30ddccc76c1671f5aac6e35c5e1c5148
+### AI Game Fee Collection
+ - https://sepolia.basescan.org/tx/0xd5c99b3feb997fa6f42b4cdd1c748fffc81a268822b9f90bffade22f48cd6326
+ - https://sepolia.basescan.org/tx/0x04085f7ccfe58754a9d3bf0e531617b2c98fcff7d8f12c796cbe73c99bf859e6
+ - https://sepolia.basescan.org/tx/0xa37cc7d0cf2089583fdce9aeeaec837cb24054530fba21de3671c8c3bdb44e7f
+
 ## Contact
 
 For any inquiries, please reach out through email:  infantsamchris@gmail.com
