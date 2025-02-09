@@ -808,8 +808,8 @@ def initialize_agent_test():
         config: A configuration dictionary.
     """
     # Initialize the LLM.
-
-    llm = ChatOpenAI(
+    llm = ChatOpenAI(model="gpt-4o")
+    """llm = ChatOpenAI(
         model="meta-llama/Llama-3.1-8B-Instruct",
         base_url="https://nilai-a779.nillion.network/v1",
         default_headers={
@@ -817,7 +817,7 @@ def initialize_agent_test():
             "Accept": "application/json",
             "Authorization": "Bearer Nillion2025",
         },
-    )
+    )"""
     wallet_data_file = "wallet_data.txt"
     wallet_data = None
     if os.path.exists(wallet_data_file):
